@@ -4399,6 +4399,71 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HeaderFill": {
+        "additionalProperties": false,
+        "description": "What Transcribe again would give a purchase missing it (#491); never a\nvalue the purchase already has. Amounts are decimal strings.",
+        "properties": {
+          "location_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Name"
+          },
+          "purchased_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchased At"
+          },
+          "tax": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "vendor_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Location Id"
+          }
+        },
+        "title": "HeaderFill",
+        "type": "object"
+      },
       "HealthOut": {
         "additionalProperties": false,
         "properties": {
@@ -17665,7 +17730,8 @@
           "mode": {
             "enum": [
               "check",
-              "read"
+              "read",
+              "transcribe"
             ],
             "title": "Mode",
             "type": "string"
@@ -17741,6 +17807,16 @@
           },
           "counts": {
             "$ref": "#/components/schemas/RereadCounts"
+          },
+          "fill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeaderFill"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -17758,7 +17834,8 @@
           "mode": {
             "enum": [
               "check",
-              "read"
+              "read",
+              "transcribe"
             ],
             "title": "Mode",
             "type": "string"

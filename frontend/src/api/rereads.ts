@@ -5,7 +5,7 @@ import { invalidatePurchases, purchaseKeys } from "./purchases";
 
 // Re-reading a receipt's lines (04, 2S, issue 272): a proposal a person applies.
 
-export type RereadMode = "check" | "read";
+export type RereadMode = "check" | "read" | "transcribe";
 export type RereadStatus =
   "pending" | "running" | "ready" | "no_changes" | "failed" | "applied" | "dismissed";
 
@@ -44,11 +44,21 @@ export interface Reconciliation {
   mismatch: boolean;
 }
 
+/** What Transcribe again would fill in that the purchase is missing (issue 491). */
+export interface HeaderFill {
+  vendor_location_id?: string | null;
+  location_name?: string | null;
+  purchased_at?: string | null;
+  total?: string | null;
+  tax?: string | null;
+}
+
 export interface RereadProposal {
   changes: RereadChange[];
   counts: { changed: number; added: number; removed: number; kept: number };
   before: { reconciliation: Reconciliation; flags: string[] };
   after: { reconciliation: Reconciliation; flags: string[] };
+  fill?: HeaderFill | null;
 }
 
 export interface Reread {
@@ -182,6 +192,8 @@ export function rereadReason(reason: string | null): string {
       return "The model's answer didn't make sense as receipt lines.";
     case "no_ocr_text":
       return "There's no stored text for this receipt to read again.";
+    case "image_missing":
+      return "The receipt's stored image is missing, so it can't be transcribed again.";
     case "voided":
       return "The purchase was removed while it was being read.";
     default:

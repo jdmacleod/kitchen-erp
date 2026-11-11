@@ -37,7 +37,7 @@ from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
 from app.ingest.errors import IngestError, RetryableError
 from app.ingest.llm import CLIENT_VERSION, LlmClient
-from app.ingest.ocr import run_ocr, second_transcript
+from app.ingest.ocr import OcrAdapter, run_ocr, second_transcript
 from app.ingest.paths import document_path
 from app.ingest.schemas import ReceiptLines
 from app.models import IngestJob, IngestStageResult, ReceiptDocument
@@ -126,10 +126,14 @@ async def stage_captured(ctx: StageContext) -> StageOutcome:
     )
 
 
-async def stage_ocr(ctx: StageContext) -> StageOutcome:
-    adapter, text, skipped = await run_ocr(
-        ctx.document, document_path(ctx.document), ctx.ocr_adapters
-    )
+async def read_scan(
+    document: ReceiptDocument, adapter_names: list[str] | None
+) -> tuple[OcrAdapter, dict[str, Any]]:
+    """Transcribe the stored receipt: the adapter whose text was taken, and the
+    OCR result's output. The OCR stage and Transcribe again (2S; #491) both read
+    through here."""
+    path = document_path(document)
+    adapter, text, skipped = await run_ocr(document, path, adapter_names)
     output: dict[str, Any] = {"text": text, "chars": len(text), "skipped": skipped}
     record = getattr(adapter, "record", None)
     if record:
@@ -138,11 +142,14 @@ async def stage_ocr(ctx: StageContext) -> StageOutcome:
         # The transcriber was asked and could not read it; the text is another
         # adapter's. Review says so (ocr_fallback).
         output["fallback"] = True
-    second = await second_transcript(
-        ctx.document, document_path(ctx.document), adapter.name, ctx.ocr_adapters
-    )
+    second = await second_transcript(document, path, adapter.name, adapter_names)
     if second is not None:
         output["second_text"] = second  # for the header's phone and store number (#488)
+    return adapter, output
+
+
+async def stage_ocr(ctx: StageContext) -> StageOutcome:
+    adapter, output = await read_scan(ctx.document, ctx.ocr_adapters)
     return StageOutcome(
         adapter=adapter.name,
         adapter_version=adapter.version,
@@ -151,12 +158,23 @@ async def stage_ocr(ctx: StageContext) -> StageOutcome:
     )
 
 
-async def stage_header(ctx: StageContext) -> StageOutcome:
+async def read_header_output(
+    db: AsyncSession,
+    llm: LlmClient,
+    document: ReceiptDocument,
+    ocr_output: dict[str, Any],
+    reference: datetime,
+) -> dict[str, Any]:
+    """The header stage's output for an OCR result: the model's fields, the
+    printed total and date checks, and the location. The header stage and
+    Transcribe again (2S; #491) both read through here.
+
+    ``reference`` is when the receipt was photographed or first uploaded: the
+    purchase came before it.
+    """
     settings = get_settings()
-    text = ctx.receipt_text()
-    header, attempts = await readers.read_header(
-        ctx.llm, text, deadline_at=readers.stage_deadline_at()
-    )
+    text = ocr_output["text"]
+    header, attempts = await readers.read_header(llm, text, deadline_at=readers.stage_deadline_at())
     flags: list[str] = []
     purchased_at = None
     if header is not None:
@@ -169,31 +187,45 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
             text,
             settings.household_timezone,
             settings.receipt_date_order,
-            # When it was photographed or first uploaded: the purchase came before.
-            reference=ctx.document.captured_at or ctx.job.created_at,
+            reference=reference,
         )
         flags.extend(when_flags)
         if header.purchased_at_local and purchased_at is None:
             flags.append("purchased_at_unparsed")
         header, total_flags = readers.apply_printed_total(header, text)
         flags.extend(total_flags)
-    second = (ctx.latest_output("ocr") or {}).get("second_text") or {}
     match = await header_stage.match_location(
-        ctx.db,
-        document_id=ctx.document.id,
+        db,
+        document_id=document.id,
         receipt_text=text,
         merchant_name=None if header is None else header.merchant_name,
         store_identifier=None if header is None else header.store_identifier,
         phone_text=None if header is None else header.phone_text,
         address_text=None if header is None else header.address_text,
-        second_text=second.get("text"),
+        second_text=second_text_of(ocr_output),
     )
-    output = header_stage.header_output(
+    return header_stage.header_output(
         header, model_attempts=attempts, purchased_at=purchased_at, match=match, flags=flags
+    )
+
+
+def header_version(llm: LlmClient) -> str:
+    return f"{llm.model}/{CLIENT_VERSION}"
+
+
+async def stage_header(ctx: StageContext) -> StageOutcome:
+    ctx.receipt_text()  # no text, no header: the stage fails as it always did
+    output = await read_header_output(
+        ctx.db,
+        ctx.llm,
+        ctx.document,
+        ctx.latest_output("ocr") or {},
+        # When it was photographed or first uploaded: the purchase came before.
+        ctx.document.captured_at or ctx.job.created_at,
     )
     return StageOutcome(
         adapter="llm",
-        adapter_version=f"{ctx.llm.model}/{CLIENT_VERSION}",
+        adapter_version=header_version(ctx.llm),
         output=output,
         next_stage="lines",
     )
