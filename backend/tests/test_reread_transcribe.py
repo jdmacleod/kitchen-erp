@@ -35,7 +35,8 @@ from tests.test_reread import _live, _purchase
 
 receipts_dir = ih.receipts_dir
 ocr_registry = ih.ocr_registry
-__all__ = ["transcriber"]
+# Fixtures pytest finds by name in this module.
+__all__ = ["ocr_registry", "receipts_dir", "transcriber"]
 CLI = "from app.cli import cli; cli()"
 
 FULL = load_fixture("independent_minimal")
