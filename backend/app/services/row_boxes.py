@@ -29,13 +29,15 @@ from app.core.logging import get_logger
 from app.ingest import row_boxes
 from app.ingest.paths import document_path
 from app.ingest.printed_rows import receipt_rows
-from app.ingest.stages import latest_results
+from app.ingest.stages import latest_results, lines_text
 from app.models import IngestJob, IngestStageResult, PurchaseLine, ReceiptDocument
 from app.services.purchases import get_purchase
 
 log = get_logger(__name__)
 
-# The latest OCR text of each read receipt with no boxes found against it yet.
+# The latest OCR text of each read receipt with no boxes found against it yet:
+# against that OCR result, and against the text its lines were read from (the
+# second transcript, when they fell back to it; #490).
 _NEEDING = text(
     """
     WITH latest_ocr AS (
@@ -43,10 +45,16 @@ _NEEDING = text(
         FROM ingest_stage_result r
         WHERE r.stage = 'ocr' AND r.output ? 'text'
         ORDER BY r.job_id, r.created_at DESC, r.id DESC
+    ), latest_lines AS (
+        SELECT DISTINCT ON (r.job_id) r.job_id, r.output ->> 'text_source' AS source
+        FROM ingest_stage_result r
+        WHERE r.stage = 'lines'
+        ORDER BY r.job_id, r.created_at DESC, r.id DESC
     )
     SELECT o.job_id
     FROM latest_ocr o
     JOIN ingest_job j ON j.id = o.job_id
+    LEFT JOIN latest_lines l ON l.job_id = o.job_id
     WHERE j.stage IN ('review', 'committed') AND j.status <> 'discarded'
       AND NOT (j.id = ANY(:skip))
       AND NOT EXISTS (
@@ -54,6 +62,7 @@ _NEEDING = text(
         WHERE b.job_id = o.job_id
           AND b.stage = 'row_boxes'
           AND b.output ->> 'ocr_result_id' = o.id::text
+          AND COALESCE(b.output ->> 'text_source', 'text') = COALESCE(l.source, 'text')
       )
     ORDER BY j.created_at DESC, j.id DESC
     LIMIT :limit
@@ -72,6 +81,11 @@ async def jobs_needing_boxes(
     return [row[0] for row in rows]
 
 
+def _source(lines: IngestStageResult | None) -> str:
+    """Which text a job's lines were read from: "text", or "second_text" (#490)."""
+    return (lines.output.get("text_source") if lines is not None else None) or "text"
+
+
 async def find_for_job(db: AsyncSession, job_id: uuid.UUID) -> IngestStageResult | None:
     """Find and record the row boxes for a job's latest OCR text. Commits.
 
@@ -79,8 +93,9 @@ async def find_for_job(db: AsyncSession, job_id: uuid.UUID) -> IngestStageResult
     cannot read the stored image.
     """
     job = await db.get(IngestJob, job_id)
-    ocr = (await latest_results(db, job_id)).get("ocr")
-    receipt_text = None if ocr is None else ocr.output.get("text")
+    latest = await latest_results(db, job_id)
+    ocr, lines = latest.get("ocr"), latest.get("lines")
+    receipt_text = None if ocr is None else lines_text(ocr.output, lines and lines.output)
     if job is None or ocr is None or not isinstance(receipt_text, str):
         return None
     document = await db.get(ReceiptDocument, job.receipt_document_id)
@@ -101,7 +116,7 @@ async def find_for_job(db: AsyncSession, job_id: uuid.UUID) -> IngestStageResult
         stage=row_boxes.STAGE,
         adapter="tesseract",
         adapter_version=row_boxes.ROW_BOXES_VERSION,
-        output={"ocr_result_id": str(ocr.id), **output},
+        output={"ocr_result_id": str(ocr.id), "text_source": _source(lines), **output},
         duration_ms=int((time.perf_counter() - started) * 1000),
     )
     db.add(result)
@@ -178,7 +193,10 @@ async def boxes_for_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purcha
     ocr, found = latest.get("ocr"), latest.get(row_boxes.STAGE)
     if ocr is None or found is None or found.output.get("ocr_result_id") != str(ocr.id):
         return PurchaseBoxes()
-    rows = receipt_rows(str(ocr.output.get("text") or ""))
+    lines_result = latest.get("lines")
+    if found.output.get("text_source", "text") != _source(lines_result):
+        return PurchaseBoxes()  # found against the other transcript's rows
+    rows = receipt_rows(lines_text(ocr.output, lines_result and lines_result.output) or "")
     by_row = {box["row"]: box for box in found.output.get("rows", [])}
     lines = (
         await db.execute(

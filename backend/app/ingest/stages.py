@@ -221,7 +221,12 @@ class LinesRead:
 
 
 async def read_receipt_lines(
-    llm: LlmClient, text: str, vendor_id: uuid.UUID | None, vendor_name: str | None
+    llm: LlmClient,
+    text: str,
+    vendor_id: uuid.UUID | None,
+    vendor_name: str | None,
+    *,
+    deadline_at: float | None = None,
 ) -> LinesRead:
     """The vendor's parser when one reads the text, otherwise the model.
 
@@ -234,7 +239,9 @@ async def read_receipt_lines(
         result = vendor_parser.parse(text)
         if result is not None:
             return LinesRead(result, vendor_parser.name, vendor_parser.version)
-    reading = await readers.read_lines(llm, text, deadline_at=readers.stage_deadline_at())
+    if deadline_at is None:
+        deadline_at = readers.stage_deadline_at()
+    reading = await readers.read_lines(llm, text, deadline_at=deadline_at)
     return LinesRead(
         reading.lines,
         lines_stage.GENERIC_PARSER,
@@ -244,6 +251,63 @@ async def read_receipt_lines(
         list(reading.unread_parts),
         reading.part_count,
     )
+
+
+def _has_items(result: ReceiptLines | None) -> bool:
+    return result is not None and any(line.line_kind == "item" for line in result.lines)
+
+
+@dataclass
+class LinesSource:
+    """A reading, and the text it was read from."""
+
+    read: LinesRead
+    text: str
+    fallback: bool = False
+
+
+async def read_lines_with_fallback(
+    llm: LlmClient,
+    text: str,
+    second_text: str | None,
+    vendor_id: uuid.UUID | None,
+    vendor_name: str | None,
+) -> LinesSource:
+    """The lines from the OCR text, or from the second transcript when that gave none.
+
+    On a till that prints two price columns the vision transcriber can lose the
+    amounts, and the reader then finds no items (#490). When the OCR result
+    kept a second transcript (2O), the lines are read again from it, and that
+    reading is used if it found items. Every check on the lines then reads the
+    same text the lines came from.
+    """
+    # One deadline for both reads: together they must end under the job's lock.
+    deadline_at = readers.stage_deadline_at()
+    first = await read_receipt_lines(llm, text, vendor_id, vendor_name, deadline_at=deadline_at)
+    if _has_items(first.result) or not (second_text and second_text.strip()):
+        return LinesSource(first, text)
+    again = await read_receipt_lines(
+        llm, second_text, vendor_id, vendor_name, deadline_at=deadline_at
+    )
+    if _has_items(again.result):
+        return LinesSource(again, second_text, fallback=True)
+    return LinesSource(first, text)
+
+
+def second_text_of(ocr: dict[str, Any] | None) -> str | None:
+    text = ((ocr or {}).get("second_text") or {}).get("text")
+    return text if isinstance(text, str) else None
+
+
+def lines_text(ocr: dict[str, Any] | None, lines: dict[str, Any] | None) -> str | None:
+    """The text a reading's lines were read from: the OCR text, or the second
+    transcript when the lines fell back to it (#490)."""
+    if (lines or {}).get("text_source") == "second_text":
+        second = second_text_of(ocr)
+        if second is not None:
+            return second
+    text = (ocr or {}).get("text")
+    return text if isinstance(text, str) else None
 
 
 def receipt_vendor(header: dict[str, Any]) -> tuple[uuid.UUID | None, str | None]:
@@ -256,6 +320,18 @@ def receipt_vendor(header: dict[str, Any]) -> tuple[uuid.UUID | None, str | None
     return vendor_id, None
 
 
+def _source_flags(ctx: StageContext, header: dict[str, Any], source: LinesSource) -> list[str]:
+    """What review says about where the text and the header came from."""
+    flags: list[str] = []
+    if (ctx.latest_output("ocr") or {}).get("fallback"):
+        flags.append("ocr_fallback")
+    if not header.get("parsed", False):
+        flags.append("header_unparsed")
+    if source.fallback:
+        flags.append("read_fallback")
+    return flags
+
+
 async def stage_lines(ctx: StageContext) -> StageOutcome:
     text = ctx.receipt_text()
     header = ctx.latest_output("header") or {}
@@ -263,7 +339,10 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     vendor_location_id = _uuid(location.get("vendor_location_id"))
     vendor_id, vendor_name = receipt_vendor(header)
 
-    lines_read = await read_receipt_lines(ctx.llm, text, vendor_id, vendor_name)
+    source = await read_lines_with_fallback(
+        ctx.llm, text, second_text_of(ctx.latest_output("ocr")), vendor_id, vendor_name
+    )
+    lines_read, text = source.read, source.text
     result, reason = lines_read.result, lines_read.reason
     parser_name, parser_version = lines_read.parser, lines_read.parser_version
     attempts, unread_parts, part_count = (
@@ -274,11 +353,7 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     printed_total = _decimal(header.get("total"))
     header_tax = _decimal(header.get("tax"))
 
-    purchase_flags: list[str] = []
-    if (ctx.latest_output("ocr") or {}).get("fallback"):
-        purchase_flags.append("ocr_fallback")
-    if not header.get("parsed", False):
-        purchase_flags.append("header_unparsed")
+    purchase_flags = _source_flags(ctx, header, source)
     assessed = assess.assess(result, text, printed_total, header_tax, unread_parts=unread_parts)
     passes, parsed, reconciliation = assessed.passes, assessed.lines, assessed.reconciliation
     merged_rows, informational = passes.merged_rows, passes.dropped_rows
@@ -322,6 +397,8 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     }
     if reason is not None:
         output["reason"] = reason
+    if source.fallback:
+        output["text_source"] = "second_text"  # what a re-check reads them against
     if result is not None:
         # The reader's own answer, before any pass, so the passes can be run again
         # over it without asking the model (04, 2S).

@@ -29,6 +29,8 @@ LINE_READING_FLAGS = frozenset(
         "total_not_in_scan",
         "reconcile_mismatch",
         "decimals_restore_total",
+        # The lines were read from the second transcript (#490).
+        "read_fallback",
     }
 )
 
