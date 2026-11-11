@@ -34,6 +34,16 @@ with two decimals ("1.75L") is no longer taken for a price. A comma between digi
 outside a price is still punctuation: "6,4" is as likely a count as a size.
 Migration 0059 re-keys the stored lines, aliases and suggestions.
 
+Version 5 (#489) drops a regular-price or saving phrase and everything after it
+("REGULAR PRICE", "REG PRICE", "ORIG PRICE", "YOU SAVED") when a word of the name
+comes before it. The vision transcriber sometimes prints an item's regular-price
+row on the item's own line, and the key then kept the phrase and the tax flag
+before it: "OAT MILK 1.60 F Regular Price 2.40 You saved 0.80" gave
+"OAT MILK F REGULAR PRICE YOU SAVED" where version 5 gives "OAT MILK". The phrase
+is matched on whole words, so a name holding "PRICE" or "SAVE" alone keeps it,
+and a key that is only the phrase stays as it was. Migration 0068 re-keys the
+stored lines, aliases, suggestions and product proposals.
+
 Any edit that alters output for any input must bump NORMALIZE_VERSION, because
 `purchase_line.raw_text_norm` is stored and aliases are matched against it.
 """
@@ -42,7 +52,7 @@ from __future__ import annotations
 
 import re
 
-NORMALIZE_VERSION = "4"
+NORMALIZE_VERSION = "5"
 
 _WS = re.compile(r"\s+")
 # A leading item code: 4+ digits, optionally with a letter prefix. Matched against
@@ -87,9 +97,47 @@ _STRAY_POINT = re.compile(r"(?<!\d)\.|\.(?!\d)")
 _FLAG_TOKEN = frozenset({"F", "T", "N", "B", "E", "X", "TX", "FS", "NF", "TF"})
 _DASH = "-"
 
+# Version 5: a regular-price or saving phrase that a word of the name comes before.
+# Each pattern is matched against one token, so each is anchored at both ends.
+_PHRASE_OPENERS = (
+    (re.compile(r"RE[GSQA]ULAR|REG|ORIG|ORIGINAL"), re.compile(r"PR[IL1]CE")),
+    (re.compile(r"YOU"), re.compile(r"SAVED?")),
+)
+_HAS_LETTER = re.compile(r"[A-Z]")
+
 
 def _is_flag(token: str) -> bool:
     return token in _FLAG_TOKEN or set(token) == {"*"}
+
+
+def _phrase_at(tokens: list[str], i: int) -> bool:
+    if i + 1 >= len(tokens):
+        return False
+    first, second = tokens[i].strip(_DASH), tokens[i + 1].strip(_DASH)
+    return any(a.fullmatch(first) and b.fullmatch(second) for a, b in _PHRASE_OPENERS)
+
+
+def _is_name_word(token: str) -> bool:
+    word = token.strip(_DASH)
+    return bool(
+        _HAS_LETTER.search(word)
+        and not _is_flag(word)
+        and not _CODE_TOKEN.fullmatch(word)
+        and not any(a.fullmatch(word) or b.fullmatch(word) for a, b in _PHRASE_OPENERS)
+    )
+
+
+def _cut_saving_phrase(tokens: list[str]) -> list[str]:
+    """Drop the first regular-price or saving phrase that a word of the name
+    precedes, and everything after it (version 5). Dashes are ignored when
+    matching, because _clean_ends strips them and the result must not change if
+    it is normalized again."""
+    named = False
+    for i, token in enumerate(tokens):
+        if named and _phrase_at(tokens, i):
+            return tokens[:i]
+        named = named or _is_name_word(token)
+    return tokens
 
 
 def _clean_ends(tokens: list[str]) -> list[str]:
@@ -134,4 +182,4 @@ def normalize_receipt_text(raw: str) -> str:
     text = _NON_TEXT.sub(" ", text)
     text = _STRAY_POINT.sub(" ", text)
     text = _WS.sub(" ", text).strip()
-    return " ".join(_clean_ends(text.split(" ") if text else []))
+    return " ".join(_clean_ends(_cut_saving_phrase(text.split(" ") if text else [])))

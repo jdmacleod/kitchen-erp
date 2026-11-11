@@ -9,6 +9,7 @@ from app.services.normalize import normalize_receipt_text as norm
 from tests.normalize_v1 import normalize_v1
 from tests.normalize_v2 import normalize_v2
 from tests.normalize_v3 import normalize_v3
+from tests.normalize_v4 import normalize_v4
 
 TABLE = [
     ("ITAL BOMBA HOT PEP", "ITAL BOMBA HOT PEP"),
@@ -67,6 +68,21 @@ TABLE = [
     ("1..5L", "1 5L"),  # a point next to a point is not between digits
     ("LOOSE .5L", "LOOSE 5L"),
     ("PACK 6,4", "PACK 6 4"),  # a comma outside a price is still punctuation
+    # Version 5 (#489): a regular-price or saving phrase after the name goes, and
+    # the tax flag it left in the middle goes with it.
+    ("KELP CRISPS 1.60 F Regular Price 2.40 , You saved 0.80", "KELP CRISPS"),
+    ("KELP CRISPS 1.60 F Reg. Price 2.40", "KELP CRISPS"),
+    ("KELP CRISPS 1.60 F ORIG PRICE 2.40", "KELP CRISPS"),
+    ("KELP CRISPS 1.60 T You Saved 0.80", "KELP CRISPS"),
+    (
+        "KELP CRISPS RESULAR PR1CE 2.40",
+        "KELP CRISPS",
+    ),  # the OCR misreadings fold_regular_prices reads
+    ("PRICE CHOPPER BREAD", "PRICE CHOPPER BREAD"),  # a word alone is part of the name
+    ("SAVE MORE SALSA", "SAVE MORE SALSA"),
+    ("REGULAR PRICE 2.40", "REGULAR PRICE"),  # nothing of the name before it: kept
+    ("REGULAR PRICE YOU SAVED", "REGULAR PRICE YOU SAVED"),
+    ("1234 F REGULAR PRICE", "F REGULAR PRICE"),  # a code and a flag are not a name
 ]
 
 
@@ -82,7 +98,7 @@ def test_idempotent(raw: str, _):
 
 
 def test_version_is_recorded_constant():
-    assert NORMALIZE_VERSION == "4"
+    assert NORMALIZE_VERSION == "5"
 
 
 # The differential tests against the frozen versions. Version 2 reads a comma
@@ -94,7 +110,8 @@ def test_version_is_recorded_constant():
 # Both halves matter: the second alone would allow a change to text with no comma.
 # Version 3 is version 2 run until the text stops changing, so it agrees with
 # version 2 wherever version 2 was already idempotent. Version 4 agrees with
-# version 3 on any text with no point or comma between two digits.
+# version 3 on any text with no point or comma between two digits. Version 5
+# agrees with version 4 on any text with no regular-price or saving phrase.
 _RECEIPT_ALPHABET = st.sampled_from(list("AB TX019.,@$/-*&%'\tLBOZKGEAM"))
 
 
@@ -137,7 +154,7 @@ _BETWEEN_DIGITS = re.compile(r"\d[.,]\d")
 @example(raw="KELP 1,75L")
 def test_v4_matches_v3_without_a_point_between_digits(raw: str):
     if not _BETWEEN_DIGITS.search(raw):
-        assert norm(raw) == normalize_v3(raw)
+        assert normalize_v4(raw) == normalize_v3(raw)
 
 
 @given(st.text(_RECEIPT_ALPHABET, max_size=40))
@@ -145,15 +162,72 @@ def test_v4_matches_v3_without_a_point_between_digits(raw: str):
 @example(raw="1.5.L")
 @example(raw="1.-5L")
 def test_v4_is_idempotent(raw: str):
-    once = norm(raw)
-    assert norm(once) == once
+    once = normalize_v4(raw)
+    assert normalize_v4(once) == once
 
 
 @given(st.text(_RECEIPT_ALPHABET, max_size=40))
 def test_v4_leaves_a_v3_key_as_it_is(raw: str):
     """Migration 0059 keeps the key of a line with no text: version 4 can't move it."""
     key = normalize_v3(raw)
-    assert norm(key) == key
+    assert normalize_v4(key) == key
+
+
+# Whole words, so the phrases turn up often enough to be tested.
+_RECEIPT_WORDS = st.lists(
+    st.sampled_from(
+        [
+            "KELP",
+            "OAT",
+            "1234",
+            "F",
+            "T",
+            "X",
+            "-",
+            "--",
+            "1.60",
+            "2,40",
+            "$0.80",
+            "@",
+            "REGULAR",
+            "REG",
+            "REG.",
+            "ORIG",
+            "PRICE",
+            "PR1CE",
+            "YOU",
+            "SAVED",
+            "SAVE",
+            "PRICE-",
+            "-REGULAR",
+            "*",
+            "1.5L",
+        ]
+    ),
+    max_size=12,
+).map(" ".join)
+_PHRASE_WORDS = re.compile(r"PR[IL1]CE|SAVE")
+
+
+@given(st.one_of(_RECEIPT_WORDS, st.text(_RECEIPT_ALPHABET, max_size=40)))
+@example(raw="KELP PRICE- REGULAR PRICE")
+def test_v5_is_idempotent(raw: str):
+    once = norm(raw)
+    assert norm(once) == once
+
+
+@given(st.one_of(_RECEIPT_WORDS, st.text(_RECEIPT_ALPHABET, max_size=40)))
+def test_v5_matches_v4_without_a_phrase(raw: str):
+    if not _PHRASE_WORDS.search(raw.upper()):
+        assert norm(raw) == normalize_v4(raw)
+
+
+@given(st.one_of(_RECEIPT_WORDS, st.text(_RECEIPT_ALPHABET, max_size=40)))
+@example(raw="KELP REGULAR PRICE F")
+def test_v5_of_a_v4_key_is_the_v5_key(raw: str):
+    """Migration 0068 re-keys a line with no text, and a product proposal, from
+    the stored version 4 key alone."""
+    assert norm(normalize_v4(raw)) == norm(raw)
 
 
 def test_the_naming_pass_reads_the_pack_it_keeps():
