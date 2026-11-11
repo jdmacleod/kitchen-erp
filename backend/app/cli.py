@@ -189,7 +189,12 @@ def _check_barcodes() -> None:
 # The migrations that re-key receipt wording, oldest first; each name gives its
 # revision and the normalizer version it moves to. A dry run reports on the first
 # one not yet applied.
-_NORMALIZE_MIGRATIONS = ("0030_normalize_v2.py", "0049_normalize_v3.py", "0059_normalize_v4.py")
+_NORMALIZE_MIGRATIONS = (
+    "0030_normalize_v2.py",
+    "0049_normalize_v3.py",
+    "0059_normalize_v4.py",
+    "0068_normalize_v5.py",
+)
 
 
 def _check_normalize() -> None:
@@ -223,8 +228,14 @@ def _check_normalize() -> None:
                     if applied:
                         continue
                     rows = []
+                    # From 0068 the product proposals' keys move too.
+                    proposals = getattr(module, "PROPOSALS_SQL", None)
                     for sql in (module.LINES_SQL, module.ALIASES_SQL, module.SUGGESTIONS_SQL):
                         rows.append([dict(r) for r in (await conn.execute(text(sql))).mappings()])
+                    if proposals is not None:
+                        rows.append(
+                            [dict(r) for r in (await conn.execute(text(proposals))).mappings()]
+                        )
                     return (revision, version, module), rows
                 return None, []
         finally:
@@ -239,8 +250,10 @@ def _check_normalize() -> None:
         )
         return
     revision, version, module = pending
-    lines, aliases, suggestions = rows
+    lines, aliases, suggestions = rows[:3]
     summary = module.plan(lines, aliases, suggestions).summary()
+    if len(rows) > 3:
+        summary["product proposals re-keyed"] = len(module.plan_proposals(rows[3]))
     typer.echo(f"Migration {revision} would re-key receipt wording (normalizer version {version}):")
     for label, n in summary.items():
         typer.echo(f"  {n:>5}  {label}")
