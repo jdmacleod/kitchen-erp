@@ -9,7 +9,9 @@ amount here is invented.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
+from app.core.config import get_settings
 from tests.pricebook_helpers import make_location, make_product, shelf
 from tests.resolution_helpers import make_receipt_purchase
 
@@ -143,7 +145,13 @@ async def test_cheapest_and_compare_stay_on_what_was_paid(admin_client, admin):
     """Paid 2.99 (regular 3.49) beats a 3.20 shelf price: cheapest reads what was paid."""
     loc, product = await _setup(admin_client)
     other = await make_location(admin_client, "Wrenfield Market", "Wrenfield Market")
-    recent = datetime.now(UTC) - timedelta(hours=2)
+    now = datetime.now(UTC)
+    midnight = datetime.now(ZoneInfo(get_settings().household_timezone)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    # Earlier today in the household's time zone: the history must have one day,
+    # and "two hours ago" is yesterday there between midnight and two.
+    recent = max(now - timedelta(hours=2), midnight + (now - midnight) / 2)
     await _commit(
         admin_client, admin, loc, product, _lines(["saving_in_price"]), purchased_at=recent
     )
