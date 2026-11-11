@@ -110,9 +110,15 @@ async def test_the_transcript_is_the_receipt_text(
 
     final = await run_job(job["id"], ocr_adapters=VISION)
 
-    assert final.stage == "review" and tesseract.calls == []
+    # Tesseract reads it too, but only as the second text (#488).
+    assert final.stage == "review" and len(tesseract.calls) == 1
     out = (await stage_outputs(admin_client, job["id"]))["ocr"]
     assert out["text"] == fixture.ocr_text
+    assert out["second_text"] == {
+        "adapter": "tesseract",
+        "version": "spy",
+        "text": fixture.ocr_text,
+    }
     assert out["skipped"] == [{"adapter": "client", "reason": "no_client_text"}]
     assert "fallback" not in out
     vision = out["vision"]

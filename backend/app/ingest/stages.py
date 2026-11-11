@@ -37,7 +37,7 @@ from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
 from app.ingest.errors import IngestError, RetryableError
 from app.ingest.llm import CLIENT_VERSION, LlmClient
-from app.ingest.ocr import run_ocr
+from app.ingest.ocr import run_ocr, second_transcript
 from app.ingest.paths import document_path
 from app.ingest.schemas import ReceiptLines
 from app.models import IngestJob, IngestStageResult, ReceiptDocument
@@ -138,6 +138,11 @@ async def stage_ocr(ctx: StageContext) -> StageOutcome:
         # The transcriber was asked and could not read it; the text is another
         # adapter's. Review says so (ocr_fallback).
         output["fallback"] = True
+    second = await second_transcript(
+        ctx.document, document_path(ctx.document), adapter.name, ctx.ocr_adapters
+    )
+    if second is not None:
+        output["second_text"] = second  # for the header's phone and store number (#488)
     return StageOutcome(
         adapter=adapter.name,
         adapter_version=adapter.version,
@@ -172,6 +177,7 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
             flags.append("purchased_at_unparsed")
         header, total_flags = readers.apply_printed_total(header, text)
         flags.extend(total_flags)
+    second = (ctx.latest_output("ocr") or {}).get("second_text") or {}
     match = await header_stage.match_location(
         ctx.db,
         document_id=ctx.document.id,
@@ -180,6 +186,7 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
         store_identifier=None if header is None else header.store_identifier,
         phone_text=None if header is None else header.phone_text,
         address_text=None if header is None else header.address_text,
+        second_text=second.get("text"),
     )
     output = header_stage.header_output(
         header, model_attempts=attempts, purchased_at=purchased_at, match=match, flags=flags

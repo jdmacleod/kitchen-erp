@@ -21,6 +21,13 @@ parameters (merchant text never reaches SQL as a fragment):
 With no phone or address on either side, the last two add nothing and ranking
 is exactly what it was before them (eng review R8).
 
+When the vision transcriber's text was taken, the OCR stage keeps a second
+transcript beside it (2O; #488), because the transcriber often leaves out the
+store's header. The store number is then looked for in that text as well, and,
+when the model read no phone, the phone numbers printed in it are tried in its
+place, by the same one-branch rule. Nothing from the second text reaches the
+model. A candidate placed that way says so in ``evidence.from_second_text``.
+
 A single confident candidate is accepted; otherwise the ranked candidates are
 recorded for the reviewer and the purchase keeps ``vendor_location_id`` null.
 
@@ -50,6 +57,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
@@ -266,6 +274,8 @@ class Candidate:
     phone: str | None = None
     phone_shared: bool = False
     address_similarity: Decimal | None = None
+    # #488: evidence read from the second transcript rather than the one taken.
+    from_second_text: list[str] = field(default_factory=list)
 
     @property
     def score(self) -> Decimal:
@@ -283,24 +293,27 @@ class Candidate:
         return score.quantize(Decimal("0.001"))
 
     def as_json(self) -> dict[str, Any]:
+        evidence: dict[str, Any] = {
+            "identifier": self.identifier,
+            "distance_m": None if self.distance_m is None else str(self.distance_m),
+            "name_similarity": (
+                None if self.name_similarity is None else str(self.name_similarity)
+            ),
+            "phone": self.phone,
+            "phone_shared": self.phone_shared,
+            "address_similarity": (
+                None if self.address_similarity is None else str(self.address_similarity)
+            ),
+        }
+        if self.from_second_text:
+            evidence["from_second_text"] = self.from_second_text
         return {
             "vendor_location_id": str(self.vendor_location_id),
             "vendor_id": str(self.vendor_id),
             "vendor_name": self.vendor_name,
             "location_name": self.location_name,
             "score": str(self.score),
-            "evidence": {
-                "identifier": self.identifier,
-                "distance_m": None if self.distance_m is None else str(self.distance_m),
-                "name_similarity": (
-                    None if self.name_similarity is None else str(self.name_similarity)
-                ),
-                "phone": self.phone,
-                "phone_shared": self.phone_shared,
-                "address_similarity": (
-                    None if self.address_similarity is None else str(self.address_similarity)
-                ),
-            },
+            "evidence": evidence,
         }
 
 
@@ -336,12 +349,65 @@ class LocationMatch:
 MIN_TEXT_IDENTIFIER = 3
 
 
+# A North American number as a till prints it: "(555) 555-0142", "555.555.0142",
+# "+1 555 555 0142". Read only from a second transcript, and counted only when it
+# is one branch's own number, so a stray run of ten digits places nothing.
+_PHONE_IN_TEXT = re.compile(r"(?<!\d)(?:\+?1[ .-]?)?\(?\d{3}\)?[ .-]?\d{3}[ .-]?\d{4}(?!\d)")
+# At most this many numbers are tried from one second transcript.
+MAX_TEXT_PHONES = 5
+
+
+def phones_in_text(text: str) -> list[str]:
+    """The phone numbers printed in ``text``, in order and without repeats."""
+    found: list[str] = []
+    for match in _PHONE_IN_TEXT.finditer(text):
+        number = match.group(0).strip()
+        if number not in found:
+            found.append(number)
+        if len(found) == MAX_TEXT_PHONES:
+            break
+    return found
+
+
 def identifier_in_text(identifier: str, text: str) -> bool:
     pattern = r"(?<![A-Za-z0-9])" + re.escape(identifier) + r"(?![A-Za-z0-9])"
     return re.search(pattern, text, flags=re.IGNORECASE) is not None
 
 
-async def match_location(  # noqa: C901, PLR0912
+async def _phone_evidence(
+    db: AsyncSession,
+    active: Any,
+    candidate: Callable[[VendorLocation], Candidate],
+    candidates: dict[uuid.UUID, Candidate],
+    phone_text: str | None,
+    second_text: str | None,
+) -> None:
+    printed = phones.digits(phone_text or "")
+    numbers = [printed] if len(printed) >= 7 else []
+    from_second = not numbers and bool(second_text)
+    if from_second:
+        numbers = [phones.digits(n) for n in phones_in_text(second_text or "")]
+    if not numbers:
+        return
+    by_vendor: dict[uuid.UUID, list[VendorLocation]] = {}
+    with_phones = await db.execute(active.where(VendorLocation.phone.is_not(None)))
+    for location in with_phones.scalars().unique():
+        own = phones.digits(location.phone or "")
+        if any(phones.same_number(number, own) for number in numbers):
+            by_vendor.setdefault(location.vendor_id, []).append(location)
+    for matched in by_vendor.values():
+        if len(matched) == 1:
+            found = candidate(matched[0])
+            found.phone = matched[0].phone
+            if from_second:
+                found.from_second_text.append("phone")
+        else:
+            for location in matched:
+                if location.id in candidates:
+                    candidates[location.id].phone_shared = True
+
+
+async def match_location(  # noqa: C901
     db: AsyncSession,
     *,
     document_id: uuid.UUID,
@@ -350,6 +416,7 @@ async def match_location(  # noqa: C901, PLR0912
     store_identifier: str | None,
     phone_text: str | None = None,
     address_text: str | None = None,
+    second_text: str | None = None,
     radius_m: int | None = None,
 ) -> LocationMatch:
     radius = radius_m if radius_m is not None else get_settings().ingest_location_radius_m
@@ -389,6 +456,15 @@ async def match_location(  # noqa: C901, PLR0912
             ):
                 candidate(location).identifier = ident
                 break
+            if (
+                second_text
+                and len(ident) >= MIN_TEXT_IDENTIFIER
+                and identifier_in_text(ident, second_text)
+            ):
+                found = candidate(location)
+                found.identifier = ident
+                found.from_second_text.append("identifier")
+                break
 
     # 2. Proximity of the capture point.
     distance = cast(func.ST_Distance(Place.geom, ReceiptDocument.capture_geo), Numeric)
@@ -423,21 +499,9 @@ async def match_location(  # noqa: C901, PLR0912
 
     # 4. The printed phone, by its digits. It counts only when it is one branch's
     #    own number: a head-office number printed by every branch, or listed on
-    #    several, cannot tell them apart and adds nothing (R9).
-    printed = phones.digits(phone_text or "")
-    if len(printed) >= 7:
-        by_vendor: dict[uuid.UUID, list[VendorLocation]] = {}
-        with_phones = await db.execute(active.where(VendorLocation.phone.is_not(None)))
-        for location in with_phones.scalars().unique():
-            if phones.same_number(printed, phones.digits(location.phone or "")):
-                by_vendor.setdefault(location.vendor_id, []).append(location)
-        for matched in by_vendor.values():
-            if len(matched) == 1:
-                candidate(matched[0]).phone = matched[0].phone
-            else:
-                for location in matched:
-                    if location.id in candidates:
-                        candidates[location.id].phone_shared = True
+    #    several, cannot tell them apart and adds nothing (R9). With no phone from
+    #    the model, the numbers in the second transcript.
+    await _phone_evidence(db, active, candidate, candidates, phone_text, second_text)
 
     # 5. Trigram likeness of the printed address to each location's address.
     address = " ".join((address_text or "").split()).lower()
