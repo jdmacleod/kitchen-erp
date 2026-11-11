@@ -221,7 +221,12 @@ class LinesRead:
 
 
 async def read_receipt_lines(
-    llm: LlmClient, text: str, vendor_id: uuid.UUID | None, vendor_name: str | None
+    llm: LlmClient,
+    text: str,
+    vendor_id: uuid.UUID | None,
+    vendor_name: str | None,
+    *,
+    deadline_at: float | None = None,
 ) -> LinesRead:
     """The vendor's parser when one reads the text, otherwise the model.
 
@@ -234,7 +239,9 @@ async def read_receipt_lines(
         result = vendor_parser.parse(text)
         if result is not None:
             return LinesRead(result, vendor_parser.name, vendor_parser.version)
-    reading = await readers.read_lines(llm, text, deadline_at=readers.stage_deadline_at())
+    if deadline_at is None:
+        deadline_at = readers.stage_deadline_at()
+    reading = await readers.read_lines(llm, text, deadline_at=deadline_at)
     return LinesRead(
         reading.lines,
         lines_stage.GENERIC_PARSER,
@@ -274,10 +281,14 @@ async def read_lines_with_fallback(
     reading is used if it found items. Every check on the lines then reads the
     same text the lines came from.
     """
-    first = await read_receipt_lines(llm, text, vendor_id, vendor_name)
+    # One deadline for both reads: together they must end under the job's lock.
+    deadline_at = readers.stage_deadline_at()
+    first = await read_receipt_lines(llm, text, vendor_id, vendor_name, deadline_at=deadline_at)
     if _has_items(first.result) or not (second_text and second_text.strip()):
         return LinesSource(first, text)
-    again = await read_receipt_lines(llm, second_text, vendor_id, vendor_name)
+    again = await read_receipt_lines(
+        llm, second_text, vendor_id, vendor_name, deadline_at=deadline_at
+    )
     if _has_items(again.result):
         return LinesSource(again, second_text, fallback=True)
     return LinesSource(first, text)

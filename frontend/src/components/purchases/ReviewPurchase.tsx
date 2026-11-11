@@ -470,7 +470,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const readFromTextScan =
     purchase.flags.includes("ocr_fallback") && purchase.status !== "committed";
   // The image reader's text gave no lines, so they were read from the text scan
-  // kept beside it (04, 2O; #490). Information too, gone once committed.
+  // kept beside it (04, 2O; issue 490). Information too, gone once committed.
   const linesFromTextScan =
     purchase.flags.includes("read_fallback") && purchase.status !== "committed";
 

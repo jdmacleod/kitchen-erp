@@ -546,7 +546,10 @@ async def _read(db: AsyncSession, reread: LineReread, llm: LlmClient) -> None:
     reread.proposal = proposal
     reread.purchase_status = purchase.status
     reread.lines_fingerprint = fingerprint(purchase)
-    reread.status = "ready" if proposal_of.has_changes(proposal) else "no_changes"
+    # A reading from the other text is a change even with the same lines: applying
+    # it moves the fallback note and the text later checks read (#490).
+    moved = source.fallback != ((lines_output or {}).get("text_source") == "second_text")
+    reread.status = "ready" if proposal_of.has_changes(proposal) or moved else "no_changes"
     reread.reason = None
 
 
