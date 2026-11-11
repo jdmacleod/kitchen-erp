@@ -234,3 +234,57 @@ describe("re-read the lines (04, 2S; UI-3.23)", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 });
+
+describe("transcribe the receipt again (04, 2S; #491)", () => {
+  it("transcribes the receipt again, and shows what it fills in", async () => {
+    let latest: Reread | null = null;
+    const transcribed: Reread = {
+      ...ready,
+      mode: "transcribe",
+      proposal: ready.proposal && {
+        ...ready.proposal,
+        fill: { location_name: "Lantern Row, Main", total: "24.41" },
+      },
+    };
+    const calls = mockApi(
+      routes(purchase(), () => latest, {
+        [`POST ${api}/rereads`]: () => {
+          latest = transcribed;
+          return jsonResponse(201, transcribed);
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/purchases/${receiptPurchaseId}`);
+    await screen.findByTestId("review");
+
+    await user.click(screen.getByRole("button", { name: "Re-read lines" }));
+    const panel = screen.getByRole("group", { name: "Re-read this receipt's lines" });
+    expect(within(panel).getByText(/Use it when the text was cut short/)).toBeInTheDocument();
+    await user.click(within(panel).getByRole("button", { name: "Transcribe again" }));
+    expect(calls.find((c) => c.method === "POST" && c.path === `${api}/rereads`)?.body).toEqual({
+      mode: "transcribe",
+    });
+
+    expect(
+      await screen.findByText("Also fills in what this purchase is missing"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Lantern Row, Main")).toBeInTheDocument();
+    expect(screen.getByText("$24.41")).toBeInTheDocument();
+  });
+
+  it("says while transcribing that the receipt is being transcribed", async () => {
+    mockApi(
+      routes(purchase(), () => ({
+        ...ready,
+        mode: "transcribe",
+        status: "running",
+        proposal: null,
+      })),
+    );
+    renderApp(`/shop/purchases/${receiptPurchaseId}/reread`);
+    expect(
+      await screen.findByText("Transcribing the receipt again… This page updates when it's done."),
+    ).toBeInTheDocument();
+  });
+});

@@ -8,6 +8,7 @@ import {
   useDismissReread,
   useLatestReread,
   useRequestReread,
+  type HeaderFill,
   type Reread,
   type RereadChange,
   type RereadField,
@@ -150,8 +151,35 @@ function Summary({ reread }: { reread: Reread }) {
           </p>
         )
       ) : null}
-      <p className={hintClass}>{counts.join(", ")}.</p>
+      <p className={hintClass}>
+        {counts.length
+          ? `${counts.join(", ")}.`
+          : "The same lines. Applying keeps the new transcript of the receipt."}
+      </p>
     </div>
+  );
+}
+
+/** The details Transcribe again found that the purchase is missing (issue 491). */
+function FillCard({ fill }: { fill: HeaderFill }) {
+  const rows = [
+    fill.location_name ? ["Store", fill.location_name] : null,
+    fill.purchased_at ? ["Date", formatDate(fill.purchased_at)] : null,
+    fill.total ? ["Total", formatMoney(fill.total)] : null,
+    fill.tax ? ["Tax", formatMoney(fill.tax)] : null,
+  ].filter((row): row is string[] => row !== null);
+  return (
+    <Card>
+      <p className="text-sm font-medium">Also fills in what this purchase is missing</p>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="contents">
+            <dt className={hintClass}>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </Card>
   );
 }
 
@@ -207,6 +235,9 @@ export function RereadPage() {
       <Button variant="secondary" disabled={busy} onClick={() => again("read")}>
         Read again
       </Button>
+      <Button variant="secondary" disabled={busy} onClick={() => again("transcribe")}>
+        Transcribe again
+      </Button>
     </span>
   );
 
@@ -246,7 +277,10 @@ export function RereadPage() {
         {header()}
         <Card>
           <p role="status" className="text-sm">
-            Reading the receipt again… This page updates when it's done.
+            {reread.mode === "transcribe"
+              ? "Transcribing the receipt again…"
+              : "Reading the receipt again…"}{" "}
+            This page updates when it's done.
           </p>
         </Card>
       </>
@@ -260,7 +294,11 @@ export function RereadPage() {
         <div className="flex flex-col gap-3">
           <Alert tone="error">{rereadReason(reread.reason)}</Alert>
           <span>
-            <Button variant="secondary" disabled={busy} onClick={() => again("read")}>
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => again(reread.mode === "transcribe" ? "transcribe" : "read")}
+            >
               Try again
             </Button>
           </span>
@@ -285,7 +323,15 @@ export function RereadPage() {
       onSuccess: () =>
         navigateWithNotice(back, {
           tone: "success",
-          message: `Re-read applied: ${changed} ${changed === 1 ? "line" : "lines"} changed.${committed ? " Commit to update its prices." : ""}`,
+          message: [
+            changed || reread.mode !== "transcribe"
+              ? `Re-read applied: ${changed} ${changed === 1 ? "line" : "lines"} changed.`
+              : "New transcript saved.",
+            p.fill ? "The missing details were filled in." : null,
+            committed ? "Commit to update its prices." : null,
+          ]
+            .filter(Boolean)
+            .join(" "),
         }),
     });
   const onDiscard = () =>
@@ -327,6 +373,7 @@ export function RereadPage() {
         <Card>
           <Summary reread={reread} />
         </Card>
+        {p.fill ? <FillCard fill={p.fill} /> : null}
         <Card>
           <h2 className={`${sectionHeading} mb-1`}>Changes</h2>
           <ol aria-label="Changes" className="flex flex-col">

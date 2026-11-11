@@ -122,7 +122,7 @@ class IngestJob(UUIDPrimaryKey, Timestamped, Base):
     )
 
 
-REREAD_MODES = ("check", "read")
+REREAD_MODES = ("check", "read", "transcribe")
 REREAD_STATUSES = ("pending", "running", "ready", "no_changes", "failed", "applied", "dismissed")
 REREAD_OPEN = ("pending", "running", "ready")
 
@@ -149,7 +149,7 @@ class LineReread(UUIDPrimaryKey, Timestamped, Base):
     purchase_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("purchase.id", ondelete="CASCADE"), nullable=False
     )
-    mode: Mapped[str] = mapped_column(String(8), nullable=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     proposal: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # The purchase as the proposal saw it: applying after either changed is stale.

@@ -2,6 +2,10 @@
 
 ``request`` makes a re-read. Re-check (``check``) answers at once from the
 reader's answer the lines stage kept; Read again (``read``) waits for the worker.
+Transcribe again (``transcribe``, #491) also waits for the worker, and reads the
+stored receipt image again first: a new transcript, header and lines. Its
+transcript is kept in the proposal and recorded only when it is applied, and its
+header fills only what the purchase is missing.
 Either way the result is a proposal (``app.ingest.reread.propose``), and nothing
 changes until ``apply``: on a draft it goes through Correct the lines; on a
 committed purchase it reopens it first, so its prices move only on recommit.
@@ -28,12 +32,16 @@ from app.ingest import assess
 from app.ingest import reread as proposal_of
 from app.ingest.errors import IngestError, RetryableError
 from app.ingest.llm import LlmClient
+from app.ingest.paths import document_path
 from app.ingest.schemas import ReceiptLines
 from app.ingest.stages import (
     backoff_seconds,
+    header_version,
     latest_results,
     lines_text,
+    read_header_output,
     read_lines_with_fallback,
+    read_scan,
     receipt_vendor,
     second_text_of,
 )
@@ -44,7 +52,9 @@ from app.models import (
     LineReread,
     Purchase,
     PurchaseLine,
+    ReceiptDocument,
 )
+from app.models.geo import VendorLocation
 from app.models.purchases import REREAD_OPEN
 from app.services import recipe_cost_triggers
 from app.services.purchases import ensure_not_voided, get_purchase
@@ -110,13 +120,20 @@ def make_proposal(
     *,
     unread_parts: list[int] | None = None,
     read_fallback: bool = False,
+    fill: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """The proposal for a reading of ``purchase``'s receipt. Pure.
 
     ``read_fallback``: the reading came from the second transcript (#490), and
-    ``receipt_text`` is that transcript.
+    ``receipt_text`` is that transcript. ``fill``: the header values Transcribe
+    again would give a purchase missing them (#491); a total or tax there is the
+    one the lines are checked against.
     """
     printed, tax = _totals(purchase)
+    if fill and fill.get("total") is not None:
+        printed = Decimal(fill["total"])
+    if fill and fill.get("tax") is not None:
+        tax = Decimal(fill["tax"])
     assessed = assess.assess(read, receipt_text, printed, tax, unread_parts=unread_parts)
     reading_flags = [*assessed.flags, *(["read_fallback"] if read_fallback else [])]
     proposal = proposal_of.propose(
@@ -136,6 +153,49 @@ def make_proposal(
     if read_fallback:
         proposal["text_source"] = "second_text"
     return proposal
+
+
+def header_fill(purchase: Purchase, header: dict[str, Any]) -> dict[str, Any]:
+    """What a new header reading gives that the purchase is missing (#491).
+
+    A value someone set, or the first reading found, is never replaced: only a
+    location not chosen, a date or total the reader could not find, and a tax
+    left blank.
+    """
+    fill: dict[str, Any] = {}
+    location = header.get("location") or {}
+    if purchase.vendor_location_id is None and location.get("vendor_location_id"):
+        fill["vendor_location_id"] = location["vendor_location_id"]
+        for candidate in location.get("candidates") or []:
+            if candidate.get("vendor_location_id") == location["vendor_location_id"]:
+                vendor, branch = candidate.get("vendor_name"), candidate.get("location_name")
+                # A branch named as its vendor is named once.
+                named = vendor if branch in (None, vendor) else f"{vendor}, {branch}"
+                fill["location_name"] = named
+    if "purchased_at_missing" in purchase.flags and header.get("purchased_at"):
+        fill["purchased_at"] = header["purchased_at"]
+    if "total_missing" in purchase.flags and header.get("total") is not None:
+        fill["total"] = header["total"]
+    if purchase.tax is None and header.get("tax") is not None:
+        fill["tax"] = header["tax"]
+    return fill
+
+
+def _apply_fill(purchase: Purchase, fill: dict[str, Any]) -> None:
+    if fill.get("vendor_location_id"):
+        purchase.vendor_location_id = uuid.UUID(fill["vendor_location_id"])
+    if fill.get("purchased_at"):
+        purchase.purchased_at = datetime.fromisoformat(fill["purchased_at"])
+    if fill.get("total") is not None:
+        purchase.total = Decimal(fill["total"])
+    if fill.get("tax") is not None:
+        purchase.tax = Decimal(fill["tax"])
+    answered = {
+        flag
+        for field, flag in (("purchased_at", "purchased_at_missing"), ("total", "total_missing"))
+        if fill.get(field) is not None
+    }
+    purchase.flags = [f for f in purchase.flags if f not in answered]
 
 
 async def state(db: AsyncSession, purchase: Purchase) -> dict[str, Any] | None:
@@ -390,6 +450,25 @@ async def apply(db: AsyncSession, user: AppUser, reread_id: uuid.UUID) -> LineRe
         )
     job = await _job(db, purchase)
     results = await latest_results(db, job.id)
+    transcript = (reread.proposal or {}).get("transcript")
+    if transcript is not None and transcript.get("based_on") != (
+        str(results["ocr"].id) if "ocr" in results else None
+    ):
+        raise ApiError(
+            409,
+            "reread_stale",
+            "The receipt was transcribed again since this re-read. Re-read it again.",
+        )
+    if transcript is not None and header_fill(purchase, transcript["header"]["output"]) != (
+        transcript.get("fill") or {}
+    ):
+        # Someone set a detail the proposal would fill (or cleared one): it is
+        # never overwritten, and the checks were made against the old values.
+        raise ApiError(
+            409,
+            "reread_stale",
+            "The purchase's details changed since this re-read. Transcribe again.",
+        )
     written = {
         line.id: line
         for line in proposal_of.baseline_lines(
@@ -411,6 +490,12 @@ async def apply(db: AsyncSession, user: AppUser, reread_id: uuid.UUID) -> LineRe
     ]
     if "printed_checks" in proposal:  # proposals made before 0057 carry none
         purchase.printed_checks = proposal["printed_checks"]
+    if transcript is not None:
+        _record_transcript(db, job, purchase, transcript)
+        location_id = (transcript.get("fill") or {}).get("vendor_location_id")
+        if location_id:
+            # The relationship too: the lines read it to find the vendor's aliases.
+            purchase.vendor_location = await db.get(VendorLocation, uuid.UUID(location_id))
     rows = _rows(proposal, purchase, written)
     ordered = await apply_rows(db, user, purchase, rows)
     db.add(
@@ -426,6 +511,38 @@ async def apply(db: AsyncSession, user: AppUser, reread_id: uuid.UUID) -> LineRe
     _decided(reread, user, "applied")
     await db.commit()
     return reread
+
+
+def _record_transcript(
+    db: AsyncSession, job: IngestJob, purchase: Purchase, transcript: dict[str, Any]
+) -> None:
+    """Record Transcribe again's OCR and header results and fill the blanks (#491).
+
+    Appended before the lines result, so the newest of each stage is this
+    reading's; the earlier results stay, as stage results always do. Row boxes
+    found against the old text stop applying and are found again.
+    """
+    for stage in ("ocr", "header"):
+        db.add(
+            IngestStageResult(
+                job_id=job.id,
+                stage=stage,
+                adapter=transcript[stage]["adapter"],
+                adapter_version=transcript[stage]["adapter_version"],
+                output=transcript[stage]["output"],
+                duration_ms=transcript[stage]["duration_ms"],
+            )
+        )
+    ocr_output, header = transcript["ocr"]["output"], transcript["header"]["output"]
+    source_flags = {
+        "ocr_fallback": bool(ocr_output.get("fallback")),
+        "header_unparsed": not header.get("parsed", False),
+    }
+    purchase.flags = [
+        *[f for f in purchase.flags if f not in source_flags],
+        *[f for f, on in source_flags.items() if on],
+    ]
+    _apply_fill(purchase, transcript.get("fill") or {})
 
 
 async def request_many(
@@ -477,7 +594,7 @@ async def claim_read(db: AsyncSession, locked_by: str) -> LineReread | None:
         await db.execute(
             select(LineReread)
             .where(
-                LineReread.mode == "read",
+                LineReread.mode.in_(("read", "transcribe")),
                 or_(
                     (LineReread.status == "pending")
                     & or_(LineReread.next_attempt_at.is_(None), LineReread.next_attempt_at <= now),
@@ -504,18 +621,83 @@ def _unlock(reread: LineReread) -> None:
     reread.locked_by = None
 
 
+async def _hold(db: AsyncSession, reread: LineReread) -> None:
+    """Renew the re-read's lock between steps.
+
+    Transcribe again runs the OCR, header and lines reads under one claim, where
+    the ingest job takes one claim for each; each read keeps within the lock
+    timeout, and renewing it between them keeps a second worker from claiming
+    the re-read mid-way.
+    """
+    reread.locked_at = datetime.now(UTC)
+    await db.commit()
+
+
+async def _transcribe(
+    db: AsyncSession,
+    llm: LlmClient,
+    reread: LineReread,
+    purchase: Purchase,
+    job: IngestJob,
+    results: dict[str, IngestStageResult],
+) -> dict[str, Any]:
+    """Transcribe the stored receipt again and read its header (#491).
+
+    The OCR adapters run as configured, without the client's text, which is the
+    upload's and would only give the same transcript back.
+    """
+    document = await db.get(ReceiptDocument, job.receipt_document_id)
+    if document is None or not document_path(document).is_file():
+        raise IngestError(code="image_missing")
+    names = [name for name in get_settings().ocr_adapters if name != "client"]
+    started = time.perf_counter()
+    adapter, ocr_output = await read_scan(document, names)
+    read_at = time.perf_counter()
+    await _hold(db, reread)
+    header = await read_header_output(
+        db, llm, document, ocr_output, document.captured_at or job.created_at
+    )
+    done = time.perf_counter()
+    await _hold(db, reread)
+    return {
+        # The OCR result this was read beside: applying after another is stale.
+        "based_on": str(results["ocr"].id) if "ocr" in results else None,
+        "ocr": {
+            "adapter": adapter.name,
+            "adapter_version": adapter.version,
+            "output": ocr_output,
+            "duration_ms": int((read_at - started) * 1000),
+        },
+        "header": {
+            "adapter": "llm",
+            "adapter_version": header_version(llm),
+            "output": header,
+            "duration_ms": int((done - read_at) * 1000),
+        },
+        "fill": header_fill(purchase, header),
+    }
+
+
 async def _read(db: AsyncSession, reread: LineReread, llm: LlmClient) -> None:
-    """Read the receipt's text again and make the proposal, or say why not."""
+    """Read the receipt again and make the proposal, or say why not.
+
+    Read again reads the stored text; Transcribe again reads the image first.
+    """
     purchase = await get_purchase(db, reread.purchase_id)
     if purchase.status == "voided":
         raise IngestError(code="voided")
     job = await _job(db, purchase)
     results = await latest_results(db, job.id)
-    ocr_output = (results["ocr"].output if "ocr" in results else None) or {}
+    transcript = None
+    if reread.mode == "transcribe":
+        transcript = await _transcribe(db, llm, reread, purchase, job, results)
+        ocr_output, header = transcript["ocr"]["output"], transcript["header"]["output"]
+    else:
+        ocr_output = (results["ocr"].output if "ocr" in results else None) or {}
+        header = (results["header"].output if "header" in results else None) or {}
     text = ocr_output.get("text")
     if not isinstance(text, str) or not text.strip():
         raise IngestError(code="no_ocr_text")
-    header = (results["header"].output if "header" in results else None) or {}
     vendor_id, vendor_name = receipt_vendor(header)
     source = await read_lines_with_fallback(
         llm, text, second_text_of(ocr_output), vendor_id, vendor_name
@@ -528,6 +710,7 @@ async def _read(db: AsyncSession, reread: LineReread, llm: LlmClient) -> None:
         reread.attempts += 1
         return
     lines_output = results["lines"].output if "lines" in results else None
+    fill = None if transcript is None else transcript["fill"]
     proposal = make_proposal(
         purchase,
         lines_output,
@@ -535,21 +718,31 @@ async def _read(db: AsyncSession, reread: LineReread, llm: LlmClient) -> None:
         lines_read.result,
         unread_parts=lines_read.unread_parts,
         read_fallback=source.fallback,
+        fill=fill,
     )
     proposal["reader"] = {
         "parser": lines_read.parser,
         "parser_version": lines_read.parser_version,
         "model_attempts": lines_read.attempts,
     }
+    if transcript is not None:
+        proposal["transcript"] = transcript
     # The proposal is made against the lines as they are now, so that is what a
     # later change is measured from.
     reread.proposal = proposal
     reread.purchase_status = purchase.status
     reread.lines_fingerprint = fingerprint(purchase)
     # A reading from the other text is a change even with the same lines: applying
-    # it moves the fallback note and the text later checks read (#490).
+    # it moves the fallback note and the text later checks read (#490). So is a
+    # header value Transcribe again fills (#491).
     moved = source.fallback != ((lines_output or {}).get("text_source") == "second_text")
-    reread.status = "ready" if proposal_of.has_changes(proposal) or moved else "no_changes"
+    changed = proposal_of.has_changes(proposal) or moved or bool(fill)
+    if transcript is not None:
+        # A new transcript is worth keeping even with the same lines: its text is
+        # what later checks read, and it may clear a fallback or unread header.
+        old = (results["ocr"].output if "ocr" in results else None) or {}
+        changed = changed or transcript["ocr"]["output"].get("text") != old.get("text")
+    reread.status = "ready" if changed else "no_changes"
     reread.reason = None
 
 

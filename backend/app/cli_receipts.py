@@ -78,6 +78,53 @@ def reread_receipts(
         typer.echo(f"{counts['already_open']} skipped: a re-read is already open.")
 
 
+@receipts_cli.command("retranscribe")
+def retranscribe_receipt(
+    purchase_id: str = typer.Argument(..., help="the purchase whose receipt to transcribe"),
+    user_email: str = REREAD_AS,
+) -> None:
+    """Queue Transcribe again for one receipt purchase (04, 2S; #491).
+
+    The worker reads the stored image again, then the header and lines, and the
+    result waits as a proposal on the purchase's review, as Read again does.
+    """
+    import uuid
+
+    from sqlalchemy import select
+
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.core.errors import ApiError
+    from app.models import AppUser
+    from app.services import reread
+
+    try:
+        purchase = uuid.UUID(purchase_id)
+    except ValueError:
+        typer.echo("error: the purchase is its id, a UUID", err=True)
+        raise typer.Exit(code=2) from None
+
+    async def _run() -> str:
+        try:
+            async with get_sessionmaker()() as db:
+                user = (
+                    await db.execute(select(AppUser).where(AppUser.email == user_email.lower()))
+                ).scalar_one_or_none()
+                if user is None:
+                    typer.echo(f"error: no user {user_email}", err=True)
+                    raise typer.Exit(code=1)
+                try:
+                    made = await reread.request(db, user, purchase, "transcribe")
+                except ApiError as exc:
+                    typer.echo(f"error: {exc.message}", err=True)
+                    raise typer.Exit(code=1) from exc
+                return str(made.id)
+        finally:
+            await dispose_engine()
+
+    reread_id = asyncio.run(_run())
+    typer.echo(f"Queued: the worker will transcribe the receipt again (re-read {reread_id}).")
+
+
 @receipts_cli.command("strip-metadata")
 def strip_receipt_metadata(
     dry_run: bool = typer.Option(

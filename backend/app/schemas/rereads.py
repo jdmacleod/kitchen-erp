@@ -10,7 +10,7 @@ from pydantic import model_validator
 
 from app.schemas.base import ApiModel
 
-RereadMode = Literal["check", "read"]
+RereadMode = Literal["check", "read", "transcribe"]
 RereadStatus = Literal[
     "pending", "running", "ready", "no_changes", "failed", "applied", "dismissed"
 ]
@@ -69,11 +69,23 @@ class RereadCounts(ApiModel):
     kept: int
 
 
+class HeaderFill(ApiModel):
+    """What Transcribe again would give a purchase missing it (#491); never a
+    value the purchase already has. Amounts are decimal strings."""
+
+    vendor_location_id: uuid.UUID | None = None
+    location_name: str | None = None
+    purchased_at: datetime | None = None
+    total: str | None = None
+    tax: str | None = None
+
+
 class RereadProposal(ApiModel):
     changes: list[RereadChange]
     counts: RereadCounts
     before: RereadSide
     after: RereadSide
+    fill: HeaderFill | None = None
 
 
 class RereadOut(ApiModel):
@@ -94,10 +106,11 @@ class RereadOut(ApiModel):
             data = {name: getattr(data, name) for name in cls.model_fields}
         proposal = data.get("proposal")
         if isinstance(proposal, dict):
-            data = {
-                **data,
-                "proposal": {k: proposal[k] for k in ("changes", "counts", "before", "after")},
-            }
+            public = {k: proposal[k] for k in ("changes", "counts", "before", "after")}
+            fill = (proposal.get("transcript") or {}).get("fill")
+            if fill:
+                public["fill"] = fill
+            data = {**data, "proposal": public}
         return data
 
 

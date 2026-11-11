@@ -10,9 +10,10 @@ const hintClass = "text-sm text-neutral-600 dark:text-neutral-400";
 /**
  * "Re-read lines" beside a receipt purchase's line count (spec 10; 04, 2S, issue 272).
  *
- * Opens a small panel with the two ways to re-read: "Re-check the lines", shown
- * only when the reading kept the reader's answer, and "Read again". Either goes
- * to the re-read page. While a re-read is open, the button goes there instead.
+ * Opens a small panel with the ways to re-read: "Re-check the lines", shown
+ * only when the reading kept the reader's answer, "Read again", and
+ * "Transcribe again" (issue 491), which reads the receipt image itself again. Each
+ * goes to the re-read page. While a re-read is open, the button goes there instead.
  */
 export function RereadLines({
   purchase,
@@ -87,6 +88,19 @@ export function RereadLines({
             </Button>
             <span className={hintClass}>
               Asks the model to read the receipt text again. Takes a few minutes.
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Button
+              variant="secondary"
+              disabled={request.isPending}
+              onClick={() => choose("transcribe")}
+            >
+              Transcribe again
+            </Button>
+            <span className={hintClass}>
+              Reads the receipt image again, then its lines. Use it when the text was cut short.
+              Takes a few minutes.
             </span>
           </div>
           <span className={hintClass}>
