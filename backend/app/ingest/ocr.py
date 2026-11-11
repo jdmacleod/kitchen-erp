@@ -341,3 +341,39 @@ async def run_ocr(
     # missing tesseract, an unreadable file and an empty photograph.
     detail = ", ".join(f"{s['adapter']}: {s['reason']}" for s in skipped) or None
     raise StageFailure(code="no_ocr_text", detail=detail)
+
+
+async def second_transcript(
+    document: ReceiptDocument,
+    image_path: Path,
+    winner: str,
+    adapter_names: list[str] | None = None,
+) -> dict[str, str] | None:
+    """Another adapter's text, kept beside the vision transcriber's (04, 2O; #488).
+
+    The transcriber often leaves out the store's header, and on some tills the
+    price columns. When it is the adapter whose text was taken, the next
+    configured server-side adapter (Tesseract in the worker) reads the receipt
+    as well, and its text is kept for the header's phone and store number and for
+    the lines when the transcript gives none. Best effort: an adapter that
+    cannot read it, or fails, leaves no second text, and the stage goes on.
+    """
+    if winner != "vision":
+        return None
+    names = adapter_names if adapter_names is not None else get_settings().ocr_adapters
+    if winner not in names:
+        return None
+    for name in names[names.index(winner) + 1 :]:
+        factory = ADAPTERS.get(name)
+        if factory is None or name == "client":
+            continue
+        adapter = factory()
+        try:
+            text = await adapter.run(document, image_path)
+        except (OcrUnavailable, StageFailure, OSError) as exc:
+            # OSError: a full or unwritable temporary directory while rendering.
+            log.info("second transcript from %s unavailable: %s", name, exc)
+            continue
+        if text.strip():
+            return {"adapter": adapter.name, "version": adapter.version, "text": text}
+    return None
