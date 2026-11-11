@@ -119,6 +119,42 @@ def test_proposals_move_from_their_key():
     assert moved == {moving: "KELP CRISPS"}
 
 
+def alias(key: str, disposition: str, **extra: Any) -> dict[str, Any]:
+    return {
+        "id": uuid.uuid4(),
+        "vendor_id": V,
+        "raw_text_norm": key,
+        "disposition": disposition,
+        "product_id": None,
+        "supply_category": None,
+        "confirmed_count": 1,
+        "last_seen_at": T0,
+        "created_at": T0,
+        **extra,
+    }
+
+
+def test_supply_aliases_of_different_categories_are_different_decisions():
+    folded = line("FOIL ROLL 3.00 T Regular Price 4.00", resolution="supply")
+    folded["supply_category"] = "wraps"
+    wraps = alias(folded["raw_text_norm"], "supply", supply_category="wraps")
+    storage = alias("FOIL ROLL", "supply", supply_category="storage", confirmed_count=3)
+    p = migration.plan([folded], [wraps, storage], [])
+    # Outvoted, not merged: the category with more confirmations stays, and
+    # the line the losing alias marked on its own goes back to be identified.
+    assert p.aliases_outvoted == 1 and p.aliases_merged == 0
+    assert wraps["id"] in p.alias_deletes and storage["id"] not in p.alias_deletes
+    assert p.lines_returned == [folded["id"]]
+
+
+def test_supply_aliases_of_one_category_merge():
+    folded = line("FOIL ROLL 3.00 T Regular Price 4.00")
+    one = alias(folded["raw_text_norm"], "supply", supply_category="wraps")
+    other = alias("FOIL ROLL", "supply", supply_category="wraps", created_at=T0.replace(day=2))
+    p = migration.plan([folded], [one, other], [])
+    assert p.aliases_merged == 1 and p.aliases_outvoted == 0
+
+
 # --- the round trip ----------------------------------------------------------------------
 
 
@@ -243,6 +279,90 @@ async def test_keys_move_to_version_5_and_come_back(admin_client, admin, owner_c
         assert await _proposal_key(owner_conn, proposal) == normalize_v4(folded)
         assert await owner_conn.fetchval("SELECT to_regclass('normalize_v5_backup')") is None
         assert await owner_conn.fetchval("SELECT to_regclass('normalize_v4_backup')") is not None
+    finally:
+        run_alembic("upgrade", "head")
+        await _engine_reset()
+
+
+async def test_an_outvoted_supply_line_loses_its_category_and_gets_it_back(
+    admin_client, admin, owner_conn
+):
+    loc = await make_location(admin_client, "Lantern Row Grocer", "Lantern Row Grocer")
+    vendor = await owner_conn.fetchval(
+        "SELECT vendor_id FROM vendor_location WHERE id = $1", uuid.UUID(loc["id"])
+    )
+    foil = uuid.UUID((await make_product(admin_client, "Foil roll", "Foil roll"))["id"])
+    folded = "FOIL ROLL 3.00 T Regular Price 4.00"
+    await make_receipt_purchase(admin.id, loc["id"], [{"raw_text": folded, "line_total": "3.00"}])
+
+    run_alembic("downgrade", "0067")
+    await _engine_reset()
+    try:
+        old_key = normalize_v4(folded)
+        await owner_conn.execute(
+            "UPDATE purchase_line SET raw_text_norm = $1, resolution = 'supply', "
+            "supply_category = 'wraps', product_id = NULL, resolved_by = NULL",
+            old_key,
+        )
+        for key, disposition, product, category, count in (
+            (old_key, "supply", None, "wraps", 1),
+            ("FOIL ROLL", "product", foil, None, 4),
+        ):
+            await owner_conn.execute(
+                "INSERT INTO receipt_alias (id, vendor_id, raw_text_norm, disposition, "
+                "product_id, supply_category, confirmed_count, last_seen_at, created_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)",
+                uuid.uuid4(),
+                vendor,
+                key,
+                disposition,
+                product,
+                category,
+                count,
+                T0,
+            )
+        before = dict(
+            await owner_conn.fetchrow(
+                "SELECT raw_text_norm, resolution, supply_category FROM purchase_line"
+            )
+        )
+
+        run_alembic("upgrade", "0068")
+        after = await owner_conn.fetchrow(
+            "SELECT raw_text_norm, resolution, supply_category FROM purchase_line"
+        )
+        assert dict(after) == {
+            "raw_text_norm": "FOIL ROLL",
+            "resolution": "unmatched",
+            "supply_category": None,
+        }
+        assert await owner_conn.fetchval("SELECT count(*) FROM receipt_alias") == 1
+
+        run_alembic("downgrade", "0067")
+        restored = await owner_conn.fetchrow(
+            "SELECT raw_text_norm, resolution, supply_category FROM purchase_line"
+        )
+        assert dict(restored) == before
+        assert await owner_conn.fetchval("SELECT count(*) FROM receipt_alias") == 2
+    finally:
+        run_alembic("upgrade", "head")
+        await _engine_reset()
+
+
+async def test_the_dry_run_reads_a_database_from_before_proposal_keys(owner_conn):
+    run_alembic("downgrade", "0064")
+    await _engine_reset()
+    try:
+        dry = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", CLI, "migrate", "--check-normalize"],
+            cwd=BACKEND_ROOT,
+            env=os.environ.copy(),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert dry.stdout.startswith("Migration 0068 would re-key"), dry.stdout
+        assert "0  product proposals re-keyed" in dry.stdout
     finally:
         run_alembic("upgrade", "head")
         await _engine_reset()

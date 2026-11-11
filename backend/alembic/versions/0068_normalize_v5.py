@@ -14,9 +14,19 @@ one vendor are combined by the same rules, and naming suggestions whose key move
 are dropped. A line with no text of its own is re-keyed from its stored key,
 which version 5 reads to the same key as the text it came from.
 
-New here: a product proposal clipped for a group of waiting lines (0065) names
-the group by its key, so that key moves too, from the stored key alone. 0030's
-rules came before proposals had one.
+New here, for what came after 0030's rules:
+
+* A kitchen supply alias (0063) is its own decision, one per category: two
+  supply aliases of different categories that come to share a key are
+  outvoted as different decisions are, never merged. A line a supply alias
+  marked on its own, outvoted, returns to To identify and loses its category
+  with its resolution (the two go together, by check constraint).
+* A product proposal clipped for a group of waiting lines (0065) names the
+  group by its key, so that key moves too, from the stored key alone.
+
+0030's ``upgrade`` is followed step for step here, with the returned lines
+clearing their supply category; its plan, backup and downgrade are used as
+they are.
 
 ``kerp migrate --check-normalize`` counts what this would change without
 changing anything. Downgrade puts back what upgrade changed, as 0030's downgrade
@@ -35,7 +45,7 @@ from pathlib import Path
 from typing import Any
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 
 from alembic import op
 
@@ -152,8 +162,35 @@ def _load_0030() -> Any:
     # A line with no text of its own is re-keyed from its stored key.
     module.LINES_SQL = module.LINES_SQL.replace(
         "pl.raw_text,", "COALESCE(pl.raw_text, pl.raw_text_norm) AS raw_text,", 1
+    ).replace("pl.product_id,", "pl.product_id, pl.supply_category,", 1)
+    module.ALIASES_SQL = module.ALIASES_SQL.replace(
+        "product_id,", "product_id, supply_category,", 1
     )
+    module.LINE_RETURN_COLUMNS = [*module.LINE_RETURN_COLUMNS, "supply_category"]
+    module._decision = _decision
+    module._line_decision = _line_decision
     return module
+
+
+def _decision(alias: dict[str, Any]) -> tuple[str, Any]:
+    if alias["disposition"] == "ignore":
+        return ("ignore", None)
+    if alias["disposition"] == "supply":
+        return ("supply", alias.get("supply_category"))
+    return ("product", alias["product_id"])
+
+
+def _line_decision(line: dict[str, Any]) -> tuple[str, Any] | None:
+    """What an alias decided for this line on its own, or None if a person did."""
+    if not line["auto"]:
+        return None
+    if line["resolution"] == "alias":
+        return ("product", line["product_id"])
+    if line["resolution"] == "ignored":
+        return ("ignore", None)
+    if line["resolution"] == "supply":
+        return ("supply", line.get("supply_category"))
+    return None
 
 
 _rekey = _load_0030()
@@ -164,6 +201,11 @@ plan = _rekey.plan
 
 # --- product proposals (0065) ----------------------------------------------------------
 
+# Whether proposals have keys yet (0065): a dry run may read an older database.
+HAS_KEYS_SQL = (
+    "SELECT 1 FROM information_schema.columns "
+    "WHERE table_name = 'product_proposal' AND column_name = 'for_raw_text_norm'"
+)
 PROPOSALS_SQL = (
     "SELECT id, for_raw_text_norm FROM product_proposal WHERE for_raw_text_norm IS NOT NULL"
 )
@@ -179,8 +221,107 @@ def plan_proposals(proposals: list[dict[str, Any]]) -> dict[Any, str]:
     return moved
 
 
+def _ids(name: str) -> sa.BindParameter:
+    return sa.bindparam(name, type_=ARRAY(UUID(as_uuid=True)))
+
+
+def _rekey_upgrade() -> None:
+    """0030's upgrade, step for step, except that a returned line also loses its
+    supply category, which the check constraint ties to its resolution."""
+    op.create_table(
+        BACKUP,
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
+        sa.Column("table_name", sa.Text(), nullable=False),
+        sa.Column("row_id", UUID(as_uuid=True), nullable=False),
+        sa.Column("action", sa.Text(), nullable=False),
+        sa.Column("columns", ARRAY(sa.Text()), nullable=False),
+        sa.Column("before", JSONB(), nullable=False),
+        sa.Column("after", JSONB()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+        ),
+    )
+    conn = op.get_bind()
+    lines = [dict(r) for r in conn.execute(sa.text(LINES_SQL)).mappings()]
+    aliases = [dict(r) for r in conn.execute(sa.text(ALIASES_SQL)).mappings()]
+    suggestions = [dict(r) for r in conn.execute(sa.text(SUGGESTIONS_SQL)).mappings()]
+    p = plan(lines, aliases, suggestions)
+
+    returned = set(p.lines_returned)
+    back_up = _rekey._back_up
+    back_up(
+        conn,
+        "purchase_line",
+        "returned",
+        sorted(returned, key=str),
+        _rekey.LINE_RETURN_COLUMNS,
+    )
+    back_up(
+        conn,
+        "purchase_line",
+        "rekeyed",
+        [i for i in p.line_keys if i not in returned],
+        ["raw_text_norm"],
+    )
+    for alias_id, update in p.alias_updates.items():
+        back_up(conn, "receipt_alias", "updated", [alias_id], sorted(update))
+    back_up(conn, "receipt_alias", "deleted", p.alias_deletes, [])
+    back_up(conn, "naming_suggestion", "deleted", p.suggestion_deletes, [])
+
+    if p.line_keys:
+        ids = list(p.line_keys)
+        conn.execute(
+            sa.text(
+                "UPDATE purchase_line pl SET raw_text_norm = u.k "
+                "FROM unnest(:ids, :keys) AS u(id, k) WHERE pl.id = u.id"
+            ).bindparams(_ids("ids"), sa.bindparam("keys", type_=ARRAY(sa.Text))),
+            {"ids": ids, "keys": [p.line_keys[i] for i in ids]},
+        )
+    if p.lines_returned:
+        conn.execute(
+            sa.text(
+                "UPDATE purchase_line SET resolution = 'unmatched', product_id = NULL, "
+                "supply_category = NULL, resolution_confidence = NULL, "
+                "suggestions = '[]'::jsonb, flags = array_remove(flags, 'price_outlier') "
+                "WHERE id = ANY(:ids)"
+            ).bindparams(_ids("ids")),
+            {"ids": p.lines_returned},
+        )
+    if p.alias_deletes:
+        conn.execute(
+            sa.text("DELETE FROM receipt_alias WHERE id = ANY(:ids)").bindparams(_ids("ids")),
+            {"ids": p.alias_deletes},
+        )
+    rekeyed = [i for i, u in p.alias_updates.items() if "raw_text_norm" in u]
+    if rekeyed:
+        # Through a placeholder, so a chain of renames never collides with itself.
+        conn.execute(
+            sa.text(
+                "UPDATE receipt_alias SET raw_text_norm = '~0068~' || id::text WHERE id = ANY(:ids)"
+            ).bindparams(_ids("ids")),
+            {"ids": rekeyed},
+        )
+    for alias_id, update in p.alias_updates.items():
+        sets = ", ".join(f"{column} = :{column}" for column in update)
+        conn.execute(
+            sa.text(f"UPDATE receipt_alias SET {sets} WHERE id = :id").bindparams(
+                sa.bindparam("id", type_=UUID(as_uuid=True))
+            ),
+            {"id": alias_id, **update},
+        )
+    if p.suggestion_deletes:
+        conn.execute(
+            sa.text("DELETE FROM naming_suggestion WHERE id = ANY(:ids)").bindparams(_ids("ids")),
+            {"ids": p.suggestion_deletes},
+        )
+    _rekey._record_after(conn, "purchase_line")
+    _rekey._record_after(conn, "receipt_alias")
+
+
 def upgrade() -> None:
-    _rekey.upgrade()
+    _rekey_upgrade()
     conn = op.get_bind()
     proposals = [dict(r) for r in conn.execute(sa.text(PROPOSALS_SQL)).mappings()]
     moved = plan_proposals(proposals)
@@ -193,7 +334,7 @@ def upgrade() -> None:
             "UPDATE product_proposal pp SET for_raw_text_norm = u.k "
             "FROM unnest(:ids, :keys) AS u(id, k) WHERE pp.id = u.id"
         ).bindparams(
-            sa.bindparam("ids", type_=ARRAY(UUID(as_uuid=True))),
+            _ids("ids"),
             sa.bindparam("keys", type_=ARRAY(sa.Text)),
         ),
         {"ids": ids, "keys": [moved[i] for i in ids]},

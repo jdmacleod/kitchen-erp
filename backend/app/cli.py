@@ -233,9 +233,10 @@ def _check_normalize() -> None:
                     for sql in (module.LINES_SQL, module.ALIASES_SQL, module.SUGGESTIONS_SQL):
                         rows.append([dict(r) for r in (await conn.execute(text(sql))).mappings()])
                     if proposals is not None:
-                        rows.append(
-                            [dict(r) for r in (await conn.execute(text(proposals))).mappings()]
-                        )
+                        # Before 0065 there are no proposal keys, so none move.
+                        has_keys = (await conn.execute(text(module.HAS_KEYS_SQL))).scalar()
+                        found = (await conn.execute(text(proposals))).mappings() if has_keys else []
+                        rows.append([dict(r) for r in found])
                     return (revision, version, module), rows
                 return None, []
         finally:
