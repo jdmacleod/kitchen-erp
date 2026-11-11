@@ -29,7 +29,7 @@ from app.core.logging import get_logger
 from app.ingest import row_boxes
 from app.ingest.paths import document_path
 from app.ingest.printed_rows import receipt_rows
-from app.ingest.stages import latest_results
+from app.ingest.stages import latest_results, lines_text
 from app.models import IngestJob, IngestStageResult, PurchaseLine, ReceiptDocument
 from app.services.purchases import get_purchase
 
@@ -79,8 +79,9 @@ async def find_for_job(db: AsyncSession, job_id: uuid.UUID) -> IngestStageResult
     cannot read the stored image.
     """
     job = await db.get(IngestJob, job_id)
-    ocr = (await latest_results(db, job_id)).get("ocr")
-    receipt_text = None if ocr is None else ocr.output.get("text")
+    latest = await latest_results(db, job_id)
+    ocr, lines = latest.get("ocr"), latest.get("lines")
+    receipt_text = None if ocr is None else lines_text(ocr.output, lines and lines.output)
     if job is None or ocr is None or not isinstance(receipt_text, str):
         return None
     document = await db.get(ReceiptDocument, job.receipt_document_id)
@@ -178,7 +179,8 @@ async def boxes_for_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purcha
     ocr, found = latest.get("ocr"), latest.get(row_boxes.STAGE)
     if ocr is None or found is None or found.output.get("ocr_result_id") != str(ocr.id):
         return PurchaseBoxes()
-    rows = receipt_rows(str(ocr.output.get("text") or ""))
+    lines_result = latest.get("lines")
+    rows = receipt_rows(lines_text(ocr.output, lines_result and lines_result.output) or "")
     by_row = {box["row"]: box for box in found.output.get("rows", [])}
     lines = (
         await db.execute(

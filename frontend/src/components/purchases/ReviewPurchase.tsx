@@ -469,12 +469,21 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   // information, not a warning, and gone once the purchase is committed.
   const readFromTextScan =
     purchase.flags.includes("ocr_fallback") && purchase.status !== "committed";
+  // The image reader's text gave no lines, so they were read from the text scan
+  // kept beside it (04, 2O; #490). Information too, gone once committed.
+  const linesFromTextScan =
+    purchase.flags.includes("read_fallback") && purchase.status !== "committed";
 
   return (
     <div onKeyDown={onKeyDown} className="flex flex-col gap-4" data-testid="review">
       {readFromTextScan ? (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Read from the text scan: the image reader wasn't available.
+        </p>
+      ) : null}
+      {linesFromTextScan ? (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Lines read from the text scan: the image reader found none.
         </p>
       ) : null}
       <dl

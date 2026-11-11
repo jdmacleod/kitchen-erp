@@ -29,7 +29,14 @@ from app.ingest import reread as proposal_of
 from app.ingest.errors import IngestError, RetryableError
 from app.ingest.llm import LlmClient
 from app.ingest.schemas import ReceiptLines
-from app.ingest.stages import backoff_seconds, latest_results, read_receipt_lines, receipt_vendor
+from app.ingest.stages import (
+    backoff_seconds,
+    latest_results,
+    lines_text,
+    read_lines_with_fallback,
+    receipt_vendor,
+    second_text_of,
+)
 from app.models import (
     AppUser,
     IngestJob,
@@ -102,10 +109,16 @@ def make_proposal(
     read: ReceiptLines,
     *,
     unread_parts: list[int] | None = None,
+    read_fallback: bool = False,
 ) -> dict[str, Any]:
-    """The proposal for a reading of ``purchase``'s receipt. Pure."""
+    """The proposal for a reading of ``purchase``'s receipt. Pure.
+
+    ``read_fallback``: the reading came from the second transcript (#490), and
+    ``receipt_text`` is that transcript.
+    """
     printed, tax = _totals(purchase)
     assessed = assess.assess(read, receipt_text, printed, tax, unread_parts=unread_parts)
+    reading_flags = [*assessed.flags, *(["read_fallback"] if read_fallback else [])]
     proposal = proposal_of.propose(
         baseline=proposal_of.baseline_lines(lines_output),
         present=_present(purchase),
@@ -113,13 +126,15 @@ def make_proposal(
         printed_total=printed,
         header_tax=tax,
         present_flags=list(purchase.flags),
-        reading_flags=assessed.flags,
+        reading_flags=reading_flags,
     )
     proposal["read_lines"] = read.model_dump(mode="json")
     proposal["printed_checks"] = assessed.passes.checks
     proposal["rules_version"] = assess.LINE_RULES_VERSION
     if unread_parts:
         proposal["unread_parts"] = list(unread_parts)
+    if read_fallback:
+        proposal["text_source"] = "second_text"
     return proposal
 
 
@@ -181,13 +196,19 @@ async def request(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, mode:
                 "not_stored",
                 "This receipt was read before its reader's answer was kept: read it again.",
             )
-        text = ((results["ocr"].output if "ocr" in results else None) or {}).get("text") or ""
+        ocr_output = results["ocr"].output if "ocr" in results else None
+        text = lines_text(ocr_output, lines_output) or ""
         try:
             read = ReceiptLines.model_validate(stored)
         except ValidationError as exc:
             raise ApiError(409, "not_stored", "The kept answer no longer reads.") from exc
         proposal = make_proposal(
-            purchase, lines_output, text, read, unread_parts=lines_output.get("unread_parts")
+            purchase,
+            lines_output,
+            text,
+            read,
+            unread_parts=lines_output.get("unread_parts"),
+            read_fallback=lines_output.get("text_source") == "second_text",
         )
         reread.proposal = proposal
         reread.status = "ready" if proposal_of.has_changes(proposal) else "no_changes"
@@ -345,6 +366,8 @@ def _applied_output(
         output["rules_version"] = proposal["rules_version"]
     if proposal.get("unread_parts"):
         output["unread_parts"] = proposal["unread_parts"]
+    if proposal.get("text_source"):
+        output["text_source"] = proposal["text_source"]
     return output
 
 
@@ -488,12 +511,16 @@ async def _read(db: AsyncSession, reread: LineReread, llm: LlmClient) -> None:
         raise IngestError(code="voided")
     job = await _job(db, purchase)
     results = await latest_results(db, job.id)
-    text = ((results["ocr"].output if "ocr" in results else None) or {}).get("text")
+    ocr_output = (results["ocr"].output if "ocr" in results else None) or {}
+    text = ocr_output.get("text")
     if not isinstance(text, str) or not text.strip():
         raise IngestError(code="no_ocr_text")
     header = (results["header"].output if "header" in results else None) or {}
     vendor_id, vendor_name = receipt_vendor(header)
-    lines_read = await read_receipt_lines(llm, text, vendor_id, vendor_name)
+    source = await read_lines_with_fallback(
+        llm, text, second_text_of(ocr_output), vendor_id, vendor_name
+    )
+    lines_read, text = source.read, source.text
     if lines_read.result is None:
         # The reader already tried as often as the stage would: say why, and stop.
         reread.status = "failed"
@@ -502,7 +529,12 @@ async def _read(db: AsyncSession, reread: LineReread, llm: LlmClient) -> None:
         return
     lines_output = results["lines"].output if "lines" in results else None
     proposal = make_proposal(
-        purchase, lines_output, text, lines_read.result, unread_parts=lines_read.unread_parts
+        purchase,
+        lines_output,
+        text,
+        lines_read.result,
+        unread_parts=lines_read.unread_parts,
+        read_fallback=source.fallback,
     )
     proposal["reader"] = {
         "parser": lines_read.parser,

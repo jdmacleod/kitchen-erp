@@ -264,11 +264,21 @@ describe("receipt review", () => {
     ).toBeInTheDocument();
   });
 
+  it("says quietly when the lines were read from the text scan", async () => {
+    mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["read_fallback"] })));
+    renderApp(base);
+    await openReview();
+    expect(
+      screen.getByText("Lines read from the text scan: the image reader found none."),
+    ).toBeInTheDocument();
+  });
+
   it("says nothing about the text scan when the image reader read it", async () => {
     mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: [] })));
     renderApp(base);
     await openReview();
     expect(screen.queryByText(/Read from the text scan/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lines read from the text scan/)).not.toBeInTheDocument();
   });
 
   it("says nothing about the date or total when both were read", async () => {
