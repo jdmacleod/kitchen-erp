@@ -151,7 +151,11 @@ function Summary({ reread }: { reread: Reread }) {
           </p>
         )
       ) : null}
-      <p className={hintClass}>{counts.join(", ")}.</p>
+      <p className={hintClass}>
+        {counts.length
+          ? `${counts.join(", ")}.`
+          : "The same lines. Applying keeps the new transcript of the receipt."}
+      </p>
     </div>
   );
 }
@@ -319,7 +323,15 @@ export function RereadPage() {
       onSuccess: () =>
         navigateWithNotice(back, {
           tone: "success",
-          message: `Re-read applied: ${changed} ${changed === 1 ? "line" : "lines"} changed.${p.fill ? " The missing details were filled in." : ""}${committed ? " Commit to update its prices." : ""}`,
+          message: [
+            changed || reread.mode !== "transcribe"
+              ? `Re-read applied: ${changed} ${changed === 1 ? "line" : "lines"} changed.`
+              : "New transcript saved.",
+            p.fill ? "The missing details were filled in." : null,
+            committed ? "Commit to update its prices." : null,
+          ]
+            .filter(Boolean)
+            .join(" "),
         }),
     });
   const onDiscard = () =>

@@ -54,6 +54,7 @@ from app.models import (
     PurchaseLine,
     ReceiptDocument,
 )
+from app.models.geo import VendorLocation
 from app.models.purchases import REREAD_OPEN
 from app.services import recipe_cost_triggers
 from app.services.purchases import ensure_not_voided, get_purchase
@@ -458,6 +459,16 @@ async def apply(db: AsyncSession, user: AppUser, reread_id: uuid.UUID) -> LineRe
             "reread_stale",
             "The receipt was transcribed again since this re-read. Re-read it again.",
         )
+    if transcript is not None and header_fill(purchase, transcript["header"]["output"]) != (
+        transcript.get("fill") or {}
+    ):
+        # Someone set a detail the proposal would fill (or cleared one): it is
+        # never overwritten, and the checks were made against the old values.
+        raise ApiError(
+            409,
+            "reread_stale",
+            "The purchase's details changed since this re-read. Transcribe again.",
+        )
     written = {
         line.id: line
         for line in proposal_of.baseline_lines(
@@ -481,6 +492,10 @@ async def apply(db: AsyncSession, user: AppUser, reread_id: uuid.UUID) -> LineRe
         purchase.printed_checks = proposal["printed_checks"]
     if transcript is not None:
         _record_transcript(db, job, purchase, transcript)
+        location_id = (transcript.get("fill") or {}).get("vendor_location_id")
+        if location_id:
+            # The relationship too: the lines read it to find the vendor's aliases.
+            purchase.vendor_location = await db.get(VendorLocation, uuid.UUID(location_id))
     rows = _rows(proposal, purchase, written)
     ordered = await apply_rows(db, user, purchase, rows)
     db.add(
@@ -722,6 +737,11 @@ async def _read(db: AsyncSession, reread: LineReread, llm: LlmClient) -> None:
     # header value Transcribe again fills (#491).
     moved = source.fallback != ((lines_output or {}).get("text_source") == "second_text")
     changed = proposal_of.has_changes(proposal) or moved or bool(fill)
+    if transcript is not None:
+        # A new transcript is worth keeping even with the same lines: its text is
+        # what later checks read, and it may clear a fallback or unread header.
+        old = (results["ocr"].output if "ocr" in results else None) or {}
+        changed = changed or transcript["ocr"]["output"].get("text") != old.get("text")
     reread.status = "ready" if changed else "no_changes"
     reread.reason = None
 

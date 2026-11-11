@@ -27,7 +27,9 @@ from app.core.db import get_sessionmaker
 from app.services import reread
 from tests import ingest_helpers as ih
 from tests.conftest import ADMIN, BACKEND_ROOT
+from tests.geo_helpers import HOME_A, make_location
 from tests.ingest_helpers import load_fixture, run_job, stage_outputs, upload_fixture
+from tests.pricebook_helpers import make_product
 from tests.test_ingest_ocr_vision import VISION, _transcript, transcriber
 from tests.test_reread import _live, _purchase
 
@@ -205,3 +207,95 @@ async def test_kerp_receipts_retranscribe_queues_one(
     assert result.stdout.startswith("Queued:"), result.stdout
     rows = await owner_conn.fetch("SELECT mode, status FROM line_reread")
     assert [(r["mode"], r["status"]) for r in rows] == [("transcribe", "pending")]
+
+
+async def _transcribed(client: httpx.AsyncClient, purchase_id: str) -> dict[str, Any]:
+    r = await client.post(f"/api/v1/purchases/{purchase_id}/rereads", json={"mode": "transcribe"})
+    assert r.status_code == 201, r.text
+    assert await _work()
+    return (await client.get(f"/api/v1/rereads/{r.json()['id']}")).json()
+
+
+async def test_a_detail_set_since_is_never_overwritten(
+    admin_client, receipts_dir, transcriber, vision_configured
+):
+    purchase_id, _ = await _short_draft(admin_client, transcriber)
+    got = await _transcribed(admin_client, purchase_id)
+    assert got["proposal"]["fill"]["total"] == "24.41"
+    # Someone types the total in before applying.
+    r = await admin_client.patch(f"/api/v1/purchases/{purchase_id}", json={"total": "24.40"})
+    assert r.status_code == 200, r.text
+
+    r = await admin_client.post(f"/api/v1/rereads/{got['id']}/apply")
+
+    assert r.status_code == 409 and r.json()["error"]["code"] == "reread_stale"
+    assert Decimal((await _purchase(admin_client, purchase_id))["total"]) == Decimal("24.40")
+
+
+async def test_a_new_transcript_with_the_same_lines_can_be_kept(
+    admin_client, receipts_dir, transcriber, vision_configured, owner_conn
+):
+    lines = FULL.llm_responses["lines"]["lines"]
+    fixture = SimpleNamespace(
+        name=FULL.name,
+        ocr_text=FULL.ocr_text,
+        llm_responses={**FULL.llm_responses, "lines": {"lines": lines}},
+    )
+    garbled = FULL.ocr_text.replace("Rosalind's", "R0sal1nd's")
+    transcriber(fixture, _replies(garbled, FULL.ocr_text))
+    _, job = await upload_fixture(admin_client, FULL, client_ocr=False)
+    final = await run_job(job["id"], ocr_adapters=VISION)
+
+    got = await _transcribed(admin_client, str(final.purchase_id))
+
+    assert got["status"] == "ready"
+    assert got["proposal"]["counts"] == {"changed": 0, "added": 0, "removed": 0, "kept": 0}
+    r = await admin_client.post(f"/api/v1/rereads/{got['id']}/apply")
+    assert r.status_code == 200, r.text
+    assert (await stage_outputs(admin_client, job["id"]))["ocr"]["text"] == FULL.ocr_text
+
+
+async def test_a_filled_store_teaches_the_new_lines_its_aliases(
+    admin_client, receipts_dir, transcriber, vision_configured, owner_conn
+):
+    location = await make_location(admin_client, "Rosalind's Corner Grocery", HOME_A)
+    butter = await make_product(admin_client, "Butter", "Butter")
+    vendor = await owner_conn.fetchval(
+        "SELECT vendor_id FROM vendor_location WHERE id = $1", uuid.UUID(location["id"])
+    )
+    await owner_conn.execute(
+        "INSERT INTO receipt_alias (id, vendor_id, raw_text_norm, disposition, product_id, "
+        "confirmed_count, last_seen_at, created_at) VALUES ($1, $2, 'BUTTER 1LB', 'product', "
+        "$3, 2, now(), now())",
+        uuid.uuid4(),
+        vendor,
+        uuid.UUID(butter["id"]),
+    )
+    # The first reading had no header at all, so no store.
+    header = FULL.llm_responses["header"]
+    lines = FULL.llm_responses["lines"]["lines"]
+    fixture = SimpleNamespace(
+        name=FULL.name,
+        ocr_text=FULL.ocr_text,
+        llm_responses={
+            **FULL.llm_responses,
+            "header": [{**header, "merchant_name": None, "total": None}, header],
+            "lines": [{"lines": lines[:2]}, {"lines": lines}],
+        },
+    )
+    transcriber(fixture, _replies("Sourdough loaf 6.50\nLocal honey 12oz 9.00\n", FULL.ocr_text))
+    _, job = await upload_fixture(admin_client, FULL, client_ocr=False)
+    final = await run_job(job["id"], ocr_adapters=VISION)
+    purchase_id = str(final.purchase_id)
+    assert (await _purchase(admin_client, purchase_id))["vendor_location"] is None
+
+    got = await _transcribed(admin_client, purchase_id)
+    assert got["proposal"]["fill"]["vendor_location_id"] == location["id"]
+    r = await admin_client.post(f"/api/v1/rereads/{got['id']}/apply")
+    assert r.status_code == 200, r.text
+
+    after = await _purchase(admin_client, purchase_id)
+    assert after["vendor_location"]["id"] == location["id"]
+    by_text = {line["raw_text"]: line for line in _live(after)}
+    butter_line = by_text["Butter 1lb            5.75"]
+    assert butter_line["resolution"] == "alias" and butter_line["product"]["id"] == butter["id"]
