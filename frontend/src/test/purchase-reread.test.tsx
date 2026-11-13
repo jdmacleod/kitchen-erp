@@ -107,6 +107,51 @@ function routes(p: Purchase, latest: () => Reread | null, more: Record<string, R
   };
 }
 
+describe("a receipt read only in part (issue 491)", () => {
+  it("offers Transcribe again on a receipt read only in part, then says how it went", async () => {
+    let latest: Reread | null = null;
+    const calls = mockApi(
+      routes(purchase({ flags: ["lines_partial"] }), () => latest, {
+        [`POST ${api}/rereads`]: () => {
+          latest = { ...ready, mode: "transcribe", status: "pending" };
+          return jsonResponse(201, latest);
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    const { unmount } = renderApp(`/purchases/${receiptPurchaseId}`);
+    await screen.findByTestId("review");
+    await user.click(screen.getByRole("button", { name: "Transcribe again" }));
+    expect(calls.find((c) => c.method === "POST" && c.path === `${api}/rereads`)?.body).toEqual({
+      mode: "transcribe",
+    });
+    unmount();
+
+    // Tried before and found nothing: the note says so, and offers it no more.
+    mockApi(
+      routes(
+        purchase({
+          flags: ["lines_partial"],
+          reread: {
+            can_recheck: true,
+            open: null,
+            last_transcribe: { status: "no_changes", at: "2026-10-12T18:00:00Z" },
+          },
+        }),
+        () => null,
+      ),
+    );
+    renderApp(`/purchases/${receiptPurchaseId}`);
+    await screen.findByTestId("review");
+    expect(
+      screen.getByText(
+        /Transcribe again on Oct 12, 2026 found nothing more\. Add the missing lines/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Transcribe again" })).not.toBeInTheDocument();
+  });
+});
+
 describe("re-read the lines (04, 2S; UI-3.23)", () => {
   it("offers both ways, re-checks, shows the changes in words, and applies them", async () => {
     let latest: Reread | null = null;

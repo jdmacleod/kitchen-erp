@@ -215,6 +215,12 @@ def _base(dimension: str) -> str:
     return BASE_UNIT[dimension]
 
 
+def same_pack(a: Any, b: Any) -> bool:
+    """Two packs naming the same size: 750 ml and 750.0 ml, or 1.5 kg and 1500 g."""
+    pa = _pack_grams(a)
+    return pa is not None and pa == _pack_grams(b)
+
+
 def packs_disagree(a: Any, b: Any) -> bool:
     """Two pack sizes more than 5% apart, or not comparable at all."""
     pa, pb = _pack_grams(a), _pack_grams(b)

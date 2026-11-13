@@ -55,8 +55,11 @@ async def catalog_version(db: AsyncSession) -> str:
     return f"{rules_version()}:{release or 'none'}"
 
 
-async def guesses(db: AsyncSession, kind: GuessKind, wanted: Iterable[str]) -> dict[str, Kept]:
-    """The guess for each name, kept or searched now and kept."""
+async def guesses(
+    db: AsyncSession, kind: GuessKind, wanted: Iterable[str], *, search: bool = True
+) -> dict[str, Kept]:
+    """The guess for each name, kept or searched now and kept. ``search=False`` reads
+    only the kept ones: cheap enough for a count, and its keys match the page's."""
     want = set(wanted)
     if not want:
         return {}
@@ -70,7 +73,7 @@ async def guesses(db: AsyncSession, kind: GuessKind, wanted: Iterable[str]) -> d
     )
     kept = {name: Kept(category, fdc_id) for name, category, fdc_id in rows}
     missing = sorted(want - kept.keys())
-    if not missing:
+    if not missing or not search:
         return kept
     for name in missing:
         kept[name] = await _search(db, kind, name)

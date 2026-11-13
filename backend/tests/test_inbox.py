@@ -16,6 +16,7 @@ from sqlalchemy import update
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.models import IngestJob, Purchase
+from app.schemas.inbox import InboxItem
 from app.services import inbox as inbox_service
 from tests import ingest_helpers as ih
 from tests.pricebook_helpers import make_location, make_product, shelf
@@ -311,6 +312,37 @@ async def test_items_are_oldest_first_across_kinds(admin_client, admin):
     await make_receipt_purchase(admin.id, loc["id"], LINES)  # created now
     kinds = [i["kind"] for i in (await get_inbox(admin_client))["items"]]
     assert kinds == ["identify", "receipt"]
+
+
+async def test_receipts_come_before_products_and_the_catalog_backlog(
+    admin_client, monkeypatch: pytest.MonkeyPatch
+):
+    """Needs you puts a person's receipts first, however old the catalog's work is."""
+    now = datetime.now(UTC)
+
+    def row(kind: str, days_old: int) -> InboxItem:
+        return InboxItem(
+            kind=kind,
+            title=kind,
+            detail="",
+            action_label="Review",
+            action_route=f"/{kind}",
+            created_at=now - timedelta(days=days_old),
+        )
+
+    async def found(db):
+        return [
+            row("bridge", 90),
+            row("recipe", 60),
+            row("product_update", 30),
+            row("identify", 5),
+            row("receipt", 1),
+            row("receipt_held", 3),
+        ]
+
+    monkeypatch.setattr(inbox_service, "_KINDS", [("all", found)])
+    kinds = [i["kind"] for i in (await get_inbox(admin_client))["items"]]
+    assert kinds == ["identify", "receipt_held", "receipt", "product_update", "bridge", "recipe"]
 
 
 async def test_a_failing_kind_fails_the_request_rather_than_hiding(

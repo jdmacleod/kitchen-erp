@@ -239,6 +239,9 @@ class ResolveProposal(ApiModel):
     standard_key: str | None = None
     category: str | None = None
     matched_spelling: str | None = None
+    # A standard entry named by its own name, plural or a listed spelling, not by a
+    # head and qualifiers: safe to accept with others in one click.
+    exact: bool = False
     note: str | None = None
     fdc_id: int | None = None
     fdc_description: str | None = None
@@ -266,6 +269,13 @@ class ResolveQueueOut(ApiModel):
     recipes: int
     # Whether "Ask the model" can do anything: a local model is configured (UI-7.16).
     model_configured: bool = False
+
+
+class ResolveExactOut(ApiModel):
+    """Names settled by "Accept exact matches", and how many names are still queued."""
+
+    resolved: int
+    remaining: int
 
 
 class ResolveDecisionIn(ApiModel):

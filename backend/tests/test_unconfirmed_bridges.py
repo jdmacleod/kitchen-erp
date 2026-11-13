@@ -146,3 +146,24 @@ async def test_the_inbox_row_costs_three_queries_however_many_values(admin_clien
         await _measure(admin_client, salt["id"], f"spoon {i}", "5")
     assert await queries() == few == 3
     assert (await unconfirmed_bridges.waiting(db_session))[0] == 21
+
+
+async def test_confirm_all_takes_an_ingredients_plausible_values_together(admin_client):
+    honey = await make_ingredient(
+        admin_client, "Honey", density_g_per_ml="1.42", density_source="usda"
+    )
+    await _measure(admin_client, honey["id"], "cup", "340")
+    await _measure(admin_client, honey["id"], "tbsp", "0.21")  # no food is this light
+    other = await make_ingredient(admin_client, "Tarn bread flour")
+    await _measure(admin_client, other["id"], "cup", "125")
+
+    r = await admin_client.post(f"/api/v1/ingredients/{honey['id']}/bridges/confirm")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"confirmed": 2}
+    # The implausible one and another ingredient's wait as before.
+    assert [(v["ingredient_name"], v["label"]) for v in await _list(admin_client)] == [
+        ("Honey", "tbsp"),
+        ("Tarn bread flour", "cup"),
+    ]
+    r = await admin_client.post(f"/api/v1/ingredients/{other['id']}/bridges/confirm")
+    assert r.json() == {"confirmed": 1}

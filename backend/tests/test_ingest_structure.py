@@ -433,6 +433,7 @@ def test_an_amount_not_proven_negative_stays_an_item(rows, text):
         ("POINTS EARNED 60", "discount", "60"),
         ("Bonus 25 points", "item", "25"),
         ("POINTS EARNED", "discount", "100"),  # the count printed in the amount column
+        ("LANTERN CLUB POINTS 0.00", "item", "0.00"),  # printed at zero: not a purchase (v6)
     ],
 )
 def test_a_points_count_counts_for_nothing(raw, kind, amount):

@@ -566,12 +566,10 @@ def points_not_money(lines: list[ParsedLine]) -> None:
     EARNED 125" as a 125 one, took the receipt far below its total. The row is
     kept, as an item at zero, for review to see.
     """
-    for line in lines:
-        if line.line_total <= 0 or line.line_kind == "tax":
+    for line in lines:  # a points row printed at 0.00 is one too (rules v6)
+        if line.line_total < 0 or line.line_kind == "tax" or not _POINTS.search(line.raw_text):
             continue
-        if not _POINTS.search(line.raw_text) or not _is_points_count(
-            line.raw_text, line.line_total
-        ):
+        if line.line_total > 0 and not _is_points_count(line.raw_text, line.line_total):
             continue
         line.line_kind = "item"
         line.line_total = Decimal("0")

@@ -14,7 +14,9 @@ spread noted when the portions disagree by more than 5%. A measure label's
 first word is made singular, so "slices" and "slice" are one measure.
 
 Accepting goes through the same write paths as the ingredient page: values
-are stored ``source = usda`` and unconfirmed, and prices are recomputed. The
+are stored ``source = usda`` and confirmed, since choosing them on the review is
+the person's check (amended 2026-11-12), and prices are recomputed. A recipe
+line's "Use it" (``mark_reviewed=False``) stores its one value unconfirmed. The
 decision records ``usda_reviewed_fdc_id``, so the ingredient leaves the list
 until its reference changes. There is no accept-all (DV18). A wrong food can
 be swapped for another, or for none, from the row (``relink``).
@@ -306,8 +308,8 @@ async def decide(
 ) -> tuple[int, Ingredient]:
     """Accept the chosen suggestions, or skip them all. Returns (values saved, ingredient).
 
-    ``mark_reviewed=False`` takes one offer from a recipe line and leaves the rest
-    on Needs a bridge for the review to decide (the recipe page's "Use it")."""
+    ``mark_reviewed=False`` takes one offer from a recipe line, unconfirmed, and leaves
+    the rest on Needs a bridge for the review to decide (the recipe page's "Use it")."""
     ingredient = await db.get(Ingredient, ingredient_id)
     if ingredient is None or not ingredient.active:
         raise ApiError(404, "not_found", "No such active ingredient.")
@@ -355,7 +357,7 @@ async def decide(
                 raise ApiError(422, "unknown_portion", "That USDA portion isn't a density offer.")
             ingredient.density_g_per_ml = offer.density_g_per_ml
             ingredient.density_source = "usda"
-            ingredient.density_confirmed = False
+            ingredient.density_confirmed = mark_reviewed
             saved += 1
         offered = {m.label: m for m in group.measures}
         for label in measures:
@@ -368,7 +370,7 @@ async def decide(
                     label=m.label,
                     canonical_qty=m.canonical_qty,
                     source="usda",
-                    confirmed=False,
+                    confirmed=mark_reviewed,
                 )
             )
             saved += 1

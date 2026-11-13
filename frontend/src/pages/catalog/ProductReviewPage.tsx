@@ -57,7 +57,8 @@ import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit } from "./ProductForm";
 import { defaultMain, PhotoSize, pixels } from "./reviewPhotos";
-import { comparedPrice, parsePieces, showPrice, showValue } from "./reviewValues";
+import { comparedPrice, fieldChanges, parsePieces, showPrice, showValue } from "./reviewValues";
+import { WhatsNew } from "./WhatsNew";
 
 export { basisText, parsePieces, showPrice, showValue } from "./reviewValues";
 
@@ -191,6 +192,8 @@ function Review({ proposal }: { proposal: Proposal }) {
       }
     : null;
   const [priceEdit, setPriceEdit] = useState<PriceBasis | null>(priceConflict ? pagePrice : null);
+  // The posted price Accept would record, as edited, or none when it records none.
+  const postedPrice = recordPrice ? (priceEdit ?? pagePrice) : null;
   const priceValid =
     !priceEdit ||
     (DECIMAL.test(priceEdit.amount.trim()) &&
@@ -417,7 +420,7 @@ function Review({ proposal }: { proposal: Proposal }) {
             <div
               className={`flex h-30 items-center justify-center rounded-md bg-neutral-100 text-sm dark:bg-neutral-800 ${muted}`}
             >
-              No photo
+              {currentMain ? "No new photo" : "No photo"}
             </div>
           )}
           {proposal.capture?.source_url ? (
@@ -510,6 +513,26 @@ function Review({ proposal }: { proposal: Proposal }) {
               </p>
             ) : null}
           </fieldset>
+
+          {match?.startsWith("update:") && targetProduct.data && !reading ? (
+            <WhatsNew
+              changes={fieldChanges(
+                // What Accept would write: the person's choice, else what was found.
+                REVIEWED.filter(
+                  ([name]) => name !== "title" || touched.has(name) || name in typed,
+                ).map(([name]) => {
+                  const chosen = touched.has(name) || name in typed;
+                  return [name, chosen ? chosenValue(name) : fields[name]?.value, chosen];
+                }),
+                (name) =>
+                  name === "gtin" ? (targetProduct.data.barcode ?? undefined) : current(name),
+              )}
+              labels={Object.fromEntries(REVIEWED)}
+              headingClass={reviewHeading}
+              photos={productPhotos.length}
+              price={postedPrice && vendor ? `${showPrice(postedPrice)} at ${vendor.name}` : null}
+            />
+          ) : null}
 
           <section aria-labelledby={`${id}-summary`}>
             <h2 id={`${id}-summary`} className={reviewHeading}>

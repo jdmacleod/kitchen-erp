@@ -10,7 +10,7 @@ export interface NameChange {
   index: number;
   printed: string;
   shown: string;
-  source: "learned" | "spelling" | "vocabulary";
+  source: "learned" | "spelling" | "vocabulary" | "store_prefix";
 }
 
 /** An existing product a row may be (issue 386). */

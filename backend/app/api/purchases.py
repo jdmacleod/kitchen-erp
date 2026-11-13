@@ -245,6 +245,7 @@ async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
             },
             status=r["status"],
             observation_count=r["observation_count"],
+            price_count=r["price_count"],
             latest_observed_at=r["latest_observed_at"],
             switch_to_ml=r["status"] == "no_density" and r["ingredient_id"] in liquids,
         )

@@ -1,6 +1,8 @@
 """The unified inbox: everything the system could not finish on its own.
 
-One list, oldest first, computed from existing tables; there is no inbox table.
+One list, computed from existing tables; there is no inbox table. Receipts come
+first, then products and prices, then the catalog's backlog, oldest first within
+each (``_GROUP``).
 Spec: docs/spec/09-information-architecture.md, "Unified inbox".
 
     kind             source                                         one row per
@@ -398,7 +400,7 @@ async def _usda(db: AsyncSession) -> list[InboxItem]:
         InboxItem(
             kind="usda",
             title=f"{count} {noun} USDA densities to review",
-            detail="Suggestions from USDA, saved as unconfirmed until you check them.",
+            detail="Suggestions from USDA. What you accept here counts as checked.",
             action_label="Review",
             action_route="/catalog/bridges#usda",
             created_at=oldest,
@@ -630,6 +632,26 @@ async def _reading(db: AsyncSession) -> InboxReading:
     )
 
 
+# The order of Needs you: receipts first, since a draft is the work only a person
+# who shopped can finish; then products and prices; then the catalog's backlog,
+# which is never done and would otherwise crowd the receipts out of a phone's
+# first screen. Oldest first within a group (amended 2026-11-12).
+_GROUP: dict[str, int] = {
+    "receipt": 0,
+    "receipt_held": 0,
+    "receipt_failed": 0,
+    "identify": 0,
+    "reread": 0,
+    "older_rules": 0,
+    "bridge": 2,
+    "unconfirmed_bridges": 2,
+    "usda": 2,
+    "link": 2,
+    "ingredient_duplicates": 2,
+    "catalog_cleanup": 2,
+    "recipe": 2,
+}
+
 _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] = [
     ("receipt", _receipts),
     ("receipt_failed", _failed_reads),
@@ -665,7 +687,7 @@ async def inbox(db: AsyncSession) -> InboxOut:
             raise
         counts[kind] = len(found)
         items.extend(found)
-    items.sort(key=lambda item: item.created_at)
+    items.sort(key=lambda item: (_GROUP.get(item.kind, 1), item.created_at))
     reading = await _reading(db)
     log.info("inbox", extra={"counts": counts, "reading": reading.count})
     return InboxOut(items=items, reading=reading)

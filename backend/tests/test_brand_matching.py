@@ -158,3 +158,16 @@ async def test_a_respelled_brand_opens_no_update(admin_client):  # R9
         assert lookups._changes_product(product, [other], ids)
         assert lookups._changes_product(product, [same])  # no links: text decides
     assert Decimal(brands.OUT_OF_FAMILY_PENALTY) > 0
+
+
+async def test_families_of_reads_every_brand_as_find_brand_does():
+    """The naming list loads every row's brand family in one query (#386)."""
+    async with get_sessionmaker()() as db:
+        await brand_import.run(db, json.dumps(BUNDLE).encode(), fmt="json")
+    texts = {"Larkspur Select", "LARKSPUR SELECT ROLLED OATS", "Hearthside", "Juniper Mills"}
+    async with get_sessionmaker()() as db:
+        found = await brands.families_of(db, texts)
+        for text in texts:
+            brand = await brands.find_brand(db, text)
+            assert found.get(text) == (brand.family_id if brand else None), text
+    assert set(found) == {"Larkspur Select", "LARKSPUR SELECT ROLLED OATS", "Hearthside"}

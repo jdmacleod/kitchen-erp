@@ -309,6 +309,7 @@ async def test_the_purchase_says_what_rereading_can_offer(
     assert (await _purchase(admin_client, purchase_id))["reread"] == {
         "can_recheck": True,
         "open": None,
+        "last_transcribe": None,
     }
     made = (await _check(admin_client, purchase_id)).json()
     assert (await _purchase(admin_client, purchase_id))["reread"]["open"] == {
@@ -327,4 +328,5 @@ async def test_the_purchase_says_what_rereading_can_offer(
     assert (await _purchase(admin_client, purchase_id))["reread"] == {
         "can_recheck": False,
         "open": None,
+        "last_transcribe": None,
     }

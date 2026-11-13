@@ -176,3 +176,34 @@ describe("Unconfirmed values on Needs a bridge (issue 356)", () => {
     ]);
   });
 });
+
+describe("Confirm all for one ingredient", () => {
+  it("confirms an ingredient's plausible values together, product densities aside", async () => {
+    const cup: UnconfirmedValue = {
+      ...items[1],
+      kind: "measure",
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8b02",
+      label: "cup",
+      value: "340",
+      g_per_ml: "1.44",
+    };
+    const state = { items: [...items, cup] };
+    const calls = mockApi(
+      routes(state, {
+        [`POST /ingredients/${honeyId}/bridges/confirm`]: () => {
+          state.items = [items[0], items[2]];
+          return jsonResponse(200, { confirmed: 2 });
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/bridges");
+    await screen.findAllByTestId("unconfirmed-value");
+    // The lemons measure looks wrong, so it gets no Confirm all; honey's two do.
+    expect(screen.getAllByRole("button", { name: /^Confirm all/ })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Confirm all 2 for honey" }));
+    expect(calls.some((c) => c.path === `/ingredients/${honeyId}/bridges/confirm`)).toBe(true);
+    expect(await screen.findByText("Confirmed 2 values for honey.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByTestId("unconfirmed-value")).toHaveLength(2));
+  });
+});
