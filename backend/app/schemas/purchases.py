@@ -111,6 +111,8 @@ class NeedsBridgeItem(ApiModel):
     product: ProductRef
     status: NormStatus
     observation_count: int
+    # Every current price of the product, so "3 of 12" says how many already compare.
+    price_count: int = 0
     latest_observed_at: datetime
     # "no density" for an ingredient in g whose products are all sold by volume:
     # measuring it in ml would bridge it without a density (issue 358).

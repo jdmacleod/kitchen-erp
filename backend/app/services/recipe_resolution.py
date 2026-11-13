@@ -40,7 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import categories, standard
 from app.catalog.names import normalize_name, singulars
-from app.catalog.standard_match import match_entry
+from app.catalog.standard_match import exact_entry, match_entry
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ids import new_id
@@ -234,21 +234,17 @@ async def _standard_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list
     existing = ctx.index.by_slug.get(entry.key)
     if existing is None:
         existing = next(iter(ctx.index.by_name.get(entry.name.lower(), [])), None)
-    if existing is not None:
-        if not existing.active:
-            return []  # an inactive ingredient holds the entry; nothing to offer or create
-        return [
-            ResolveProposal(
-                tier="standard",
-                name=existing.name,
-                ingredient_id=existing.id,
-                standard_key=entry.key,
-                category=existing.category,
-            )
-        ]
+    if existing is not None and not existing.active:
+        return []  # an inactive ingredient holds the entry; nothing to offer or create
+    # Its ingredient when the catalog has one, or the entry to create one from.
     return [
         ResolveProposal(
-            tier="standard", name=entry.name, standard_key=entry.key, category=entry.category
+            tier="standard",
+            name=existing.name if existing else entry.name,
+            ingredient_id=existing.id if existing else None,
+            standard_key=entry.key,
+            category=existing.category if existing else entry.category,
+            exact=exact_entry(name_norm) is entry,
         )
     ]
 
@@ -443,8 +439,8 @@ async def proposals_for(db: AsyncSession, ctx: Context, name_norm: str) -> list[
     out: list[ResolveProposal] = []
     at: dict[tuple[str, str], int] = {}
     for propose in PROPOSERS:
-        if propose is _model_tier and len(out) >= MAX_PROPOSALS:
-            break
+        if (propose is _model_tier and len(out) >= MAX_PROPOSALS) or (out and out[0].exact):
+            break  # an exact standard entry settles it: lower tiers only add noise and time
         for proposal in await propose(db, ctx, name_norm):
             key = _target(proposal)
             if key in at:

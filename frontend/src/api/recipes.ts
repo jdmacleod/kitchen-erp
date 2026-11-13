@@ -188,6 +188,8 @@ export interface ResolveProposal {
   standard_key: string | null;
   category: string | null;
   matched_spelling: string | null;
+  /** A standard entry named by its own name, plural or a listed spelling. */
+  exact?: boolean;
   /** The prep tier's stripped words, sent back with the decision. */
   note: string | null;
   /** The USDA tier's food, sent back with a new ingredient. */
@@ -481,6 +483,20 @@ export function useDecideName() {
   return useMutation({
     mutationFn: (input: ResolveDecisionInput) =>
       api<ResolveDecision>("/recipes/resolve", { method: "POST", body: input }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: recipeKeys.all });
+      void client.invalidateQueries({ queryKey: inboxKey });
+      void client.invalidateQueries({ queryKey: catalogKeys.ingredients });
+    },
+  });
+}
+
+/** Accept every queued name whose standard-list proposal is exact, at once. */
+export function useAcceptExact() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api<{ resolved: number; remaining: number }>("/recipes/resolve/exact", { method: "POST" }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: recipeKeys.all });
       void client.invalidateQueries({ queryKey: inboxKey });

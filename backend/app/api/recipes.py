@@ -31,6 +31,7 @@ from app.schemas.recipes import (
     ResolveAskOut,
     ResolveDecisionIn,
     ResolveDecisionOut,
+    ResolveExactOut,
     ResolveQueueOut,
     ScanOut,
 )
@@ -39,6 +40,7 @@ from app.services import (
     recipe_costing,
     recipe_pages,
     recipe_resolution,
+    recipe_resolution_exact,
     recipes,
     user_settings,
 )
@@ -88,6 +90,14 @@ async def resolve_decide(
 ) -> ResolveDecisionOut:
     """One decision for a name: an ingredient, a new one, or not an ingredient."""
     return await recipe_resolution.decide(db, user, payload)
+
+
+@router.post("/recipes/resolve/exact", response_model=ResolveExactOut)
+async def resolve_exact(user: CurrentUser, db: DbSession) -> ResolveExactOut:
+    """Every queued name that is a standard entry's own name or listed spelling, at once."""
+    resolved = await recipe_resolution_exact.accept_exact(db, user)
+    remaining, _, _ = await recipe_resolution.queue_counts(db)
+    return ResolveExactOut(resolved=resolved, remaining=remaining)
 
 
 @router.post("/recipes/resolve/ask", response_model=ResolveAskOut)
