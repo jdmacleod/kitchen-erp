@@ -541,7 +541,7 @@ describe("receipt review", () => {
     expect(dialog).toHaveTextContent(
       "2 lines emit a price observation now. 1 unidentified line waits in the to-identify queue.",
     );
-    expect(within(dialog).getByRole("button", { name: "Commit" })).toHaveFocus();
+    expect(within(dialog).getByRole("button", { name: "Commit anyway" })).toHaveFocus();
     await user.keyboard("{Enter}");
 
     await waitFor(() =>
@@ -588,7 +588,7 @@ describe("receipt review", () => {
     await user.keyboard("c");
     const dialog = await screen.findByRole("dialog", { name: "Commit this purchase?" });
     // The shared Dialog keeps Tab inside (issue 314): Commit, Cancel, then Commit again.
-    const commitButton = within(dialog).getByRole("button", { name: "Commit" });
+    const commitButton = within(dialog).getByRole("button", { name: "Commit anyway" });
     expect(commitButton).toHaveFocus();
     await user.tab();
     expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();

@@ -96,6 +96,7 @@ async def test_transcribe_again_proposes_the_full_receipt_and_applies_it(
     purchase_id, job_id = await _short_draft(admin_client, transcriber)
     before = await _purchase(admin_client, purchase_id)
     assert len(_live(before)) == 2 and "total_missing" in before["flags"]
+    assert before["reread"]["last_transcribe"] is None
 
     r = await admin_client.post(
         f"/api/v1/purchases/{purchase_id}/rereads", json={"mode": "transcribe"}
@@ -118,6 +119,8 @@ async def test_transcribe_again_proposes_the_full_receipt_and_applies_it(
     assert r.status_code == 200, r.text
     after = await _purchase(admin_client, purchase_id)
     assert len(_live(after)) == 5
+    # The page can say Transcribe again was tried, and how it ended.
+    assert after["reread"]["last_transcribe"]["status"] == "applied"
     assert Decimal(after["total"]) == Decimal("24.41")
     assert "total_missing" not in after["flags"]
     assert await _ocr_results(owner_conn, job_id) == 2

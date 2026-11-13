@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { errorMessage } from "../../api/client";
 import type { Purchase } from "../../api/purchases";
 import { useRequestReread, type RereadMode } from "../../api/rereads";
+import { formatDate } from "../../lib/format";
 import { Alert, Button, focusRing, secondaryLinkClass } from "../ui";
 
 const hintClass = "text-sm text-neutral-600 dark:text-neutral-400";
@@ -113,5 +114,58 @@ export function RereadLines({
         </div>
       ) : null}
     </>
+  );
+}
+
+const TRANSCRIBED: Record<string, string> = {
+  no_changes: "found nothing more",
+  failed: "could not read it",
+  applied: "was applied, and lines are still missing",
+  dismissed: "was dismissed",
+};
+
+/**
+ * The note on a receipt read only in part: it offers "Transcribe again" right there,
+ * or says when that was tried and how it ended, so the person knows the photo is the
+ * only place left to read the missing lines from.
+ */
+export function PartialLines({
+  purchase,
+  disabled = false,
+}: {
+  purchase: Purchase;
+  disabled?: boolean;
+}) {
+  const state = purchase.reread;
+  const navigate = useNavigate();
+  const request = useRequestReread(purchase.id);
+  const page = `/shop/purchases/${purchase.id}/reread`;
+  const last = state?.last_transcribe ?? null;
+  return (
+    <Alert tone="info">
+      <span className="block">
+        Part of this receipt could not be read, so some of its lines are missing.{" "}
+        {last
+          ? `Transcribe again on ${formatDate(last.at)} ${TRANSCRIBED[last.status]}. Add the missing lines from the receipt image.`
+          : "Compare the lines with the receipt image and add the ones that are not here."}
+      </span>
+      {state?.open ? (
+        <Link to={page} className={`mt-2 inline-block ${secondaryLinkClass}`}>
+          {state.open.status === "ready" ? "Re-read ready" : "Re-read in progress"}
+        </Link>
+      ) : state && !last ? (
+        <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Button
+            variant="secondary"
+            disabled={disabled || request.isPending}
+            onClick={() => request.mutate("transcribe", { onSuccess: () => void navigate(page) })}
+          >
+            Transcribe again
+          </Button>
+          <span className={hintClass}>Reads the receipt image again. Takes a few minutes.</span>
+        </span>
+      ) : null}
+      {request.isError ? <Alert tone="error">{errorMessage(request.error)}</Alert> : null}
+    </Alert>
   );
 }
