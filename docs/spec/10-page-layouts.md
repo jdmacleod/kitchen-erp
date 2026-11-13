@@ -17,7 +17,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 - **Header:** a time-of-day greeting without a name ("Good afternoon") and a one-line summary, "3 things need you" or "Nothing needs you" (G12). Its Capture button is secondary: the sidebar's Capture, or the phone tab bar's, is the one primary action (issue 247).
 - **Reading line:** when receipts, product pages or product photos are being read, one line sits above Needs you: "Reading 2 receipts and 1 product page…". It turns squash, "This is taking longer than usual · Check System", when reading has stalled (G1, D21, PD7).
 - **Layout:** two columns, roughly 1.65 : 1.
-- **Left, Needs you:** one card of inbox rows, oldest first.
+- **Left, Needs you:** one card of inbox rows, receipts first, then products and prices, then the catalog's backlog, oldest first within each (`09`; amended 2026-11-12). The footer reads "Anything the system can't finish on its own lands here, receipts first, and leaves once it's done."
   - Each row is a three-column grid: a kind badge, the title with a one-line explanation, and a soft action button. The badge column is as wide as the widest badge shown, with no fixed slot (UI-6.1, issue 247).
   - Kind badges are neutral pills, except "Couldn't read" in the tomato tint (G5) and "Careful look" in squash (#121).
   - Aggregate rows carry their size in the title (G6).

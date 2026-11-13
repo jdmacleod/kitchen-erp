@@ -7655,6 +7655,32 @@
         "title": "LastPaid",
         "type": "object"
       },
+      "LastTranscribe": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "no_changes",
+              "failed",
+              "applied",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "at"
+        ],
+        "title": "LastTranscribe",
+        "type": "object"
+      },
       "LastUnitOut": {
         "additionalProperties": false,
         "properties": {
@@ -17895,6 +17921,16 @@
           "can_recheck": {
             "title": "Can Recheck",
             "type": "boolean"
+          },
+          "last_transcribe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastTranscribe"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "open": {
             "anyOf": [

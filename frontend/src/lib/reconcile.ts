@@ -1,5 +1,5 @@
 import type { Purchase, PurchaseLine } from "../api/purchases";
-import { add, cmp, isDecimal, mul, roundTo, sub } from "./decimal";
+import { add, cmp, formatMoney, isDecimal, mul, roundTo, sub } from "./decimal";
 
 // Why a receipt's lines miss its printed total (2S, U1). Pure: the review page
 // renders what this finds, and each hint names the lines a fix would change.
@@ -46,7 +46,8 @@ export type Hint =
   | { kind: "savings_in_price"; lines: PurchaseLine[]; amount: string }
   | { kind: "saving_misread"; line: PurchaseLine; from: string; to: string }
   | { kind: "weights_not_joined"; lines: PurchaseLine[] }
-  | { kind: "line_is_gap"; line: PurchaseLine; amount: string };
+  | { kind: "line_is_gap"; line: PurchaseLine; amount: string }
+  | { kind: "donation_paid"; line: PurchaseLine; amount: string };
 
 function absolute(a: string): string {
   return cmp(a, "0") < 0 ? sub("0", a) : a;
@@ -168,6 +169,25 @@ function savingMisread(purchase: Purchase): Hint | null {
   return { kind: "saving_misread", line: fits[0], from, to: roundTo(add(from, diff), 2) };
 }
 
+/** Wording of money given at the till; mirrors app/ingest/donations.py. */
+const DONATION = /\bdonat|\bcharit|\bround\s*-?\s*up\b/i;
+
+/**
+ * A donation added at the till but read as money off: counted as paid, the lines
+ * come closer to the total by twice its amount (the reading rule's pattern 15, for
+ * a line it never saw, such as one added by hand).
+ */
+function donationPaid(purchase: Purchase, gap: string | null): Hint | null {
+  if (gap === null) return null;
+  const line = purchase.lines.find(
+    (l) =>
+      l.line_kind === "discount" &&
+      DONATION.test(`${l.raw_text} ${l.printed_text ?? ""}`) &&
+      cmp(absolute(add(gap, mul(total(l), "2"))), absolute(gap)) < 0,
+  );
+  return line ? { kind: "donation_paid", line, amount: roundTo(total(line), 2) } : null;
+}
+
 /** Weight or count rows left on their own: each should be part of an item beside it. */
 function weightsNotJoined(purchase: Purchase): Hint | null {
   const loose = purchase.lines.filter((l) => l.flags.includes("quantity_line"));
@@ -181,6 +201,8 @@ function weightsNotJoined(purchase: Purchase): Hint | null {
 export function hints(purchase: Purchase): Hint[] {
   const out: Hint[] = [];
   const { gap } = breakdown(purchase);
+  const donation = donationPaid(purchase, gap);
+  if (donation) out.push(donation);
   const counted = purchase.lines.filter(countedSaving);
   const savings = sum(counted.map(total));
   if (gap !== null && counted.length > 0 && cmp(gap, "0") < 0 && near(absolute(gap), savings)) {
@@ -261,4 +283,20 @@ export function totalHidingGap(purchase: Purchase, newTotal: string | undefined)
   if (newTotal === undefined || purchase.trust !== "check_lines") return null;
   const lines = purchase.lines_total ?? null;
   return lines !== null && isDecimal(newTotal) && cmp(newTotal, lines) === 0 ? newTotal : null;
+}
+
+/** What the commit dialog says about lines that miss the total, or none. */
+export function commitGapWords(
+  purchase: Purchase,
+  mismatch: boolean,
+  unread: boolean,
+): string | null {
+  const { gap } = breakdown(purchase);
+  const off = gap !== null && mismatch ? gap : null;
+  const words =
+    off === null
+      ? ""
+      : `The lines are ${formatMoney(off.replace("-", ""))} ${off.startsWith("-") ? "short of" : "over"} the receipt's total.`;
+  if (unread) return `${words} Part of the receipt was not read, so some lines are missing.`.trim();
+  return words || null;
 }

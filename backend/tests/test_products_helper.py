@@ -207,6 +207,18 @@ async def test_a_late_answer_opens_a_product_update_or_is_closed(admin_client, h
         "1.5",
     )
 
+    # Asked again, the same facts with the pack written another way change nothing.
+    r = await admin_client.post(f"/api/v1/products/{product_id}/look-up", json={})
+    assert r.status_code == 200, r.text
+    asked = r.json()
+    same = json.loads(answer(asked["id"]))
+    same["candidates"][2]["value"] = {"qty": 1500.0, "unit": "g"}
+    same["candidates"].append(
+        {"field": "pack", "value": {"qty": 1.50, "unit": "kg"}, "source": "manufacturer"}
+    )
+    r = await post_answer(helper, json.dumps(same))
+    assert r.json()["outcome"] == "no_change", r.text
+
     # An answer to a rejected proposal is recorded and closed.
     rejected_id = await proposal_from_scan(admin_client, ANOTHER)
     asked = await ask(admin_client, rejected_id)

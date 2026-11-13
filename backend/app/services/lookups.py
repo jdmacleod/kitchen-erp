@@ -659,6 +659,9 @@ def _changes_product(
             and (brand_ids or {}).get(str(c.value)) == product.brand_id
         ):
             continue
+        # A page writes 750.0 where the product holds 750: the same pack, no change.
+        if c.field == "pack" and merging.same_pack(current["pack"], c.value):
+            continue
         if c.field in current and current[c.field] != c.value and c.field != "title":
             return True
     return False

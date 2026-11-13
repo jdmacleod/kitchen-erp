@@ -322,6 +322,11 @@ describe("product review", () => {
       "href",
       `/catalog/vendors/${vendorId}`,
     );
+    // What's new names only the barcode: the brand in other capitals is the same, and
+    // a store with no locations brings no price.
+    expect(screen.getByTestId("whats-new")).toHaveTextContent(
+      /^Barcode: found 5012345000022 \(it keeps 012345678905 unless you choose 5012345000022 under Edit details\)$/,
+    );
 
     await user.click(screen.getByRole("button", { name: "Edit details" }));
     const name = screen.getByRole("group", { name: "Name" });
@@ -335,6 +340,10 @@ describe("product review", () => {
 
     // Choosing the helper's name replaces the product's; the untouched brand is kept.
     await user.click(within(name).getByRole("radio", { name: /MILLSTONE PLAIN FLOUR/ }));
+    // What's new follows the choice: Accept now writes that name.
+    expect(screen.getByTestId("whats-new")).toHaveTextContent(
+      `Name: ${flourProduct.name} → MILLSTONE PLAIN FLOUR (your choice)`,
+    );
     await user.click(screen.getByRole("button", { name: "Accept" }));
     await waitFor(() => expect(calls.some((c) => c.path.endsWith("/accept"))).toBe(true));
     const sent = calls.find((c) => c.path.endsWith("/accept"))!.body as {
@@ -342,6 +351,76 @@ describe("product review", () => {
     };
     expect(sent.edits).toEqual({ title: "MILLSTONE PLAIN FLOUR" });
     expect(await screen.findByText("Updated MILLSTONE PLAIN FLOUR.")).toBeInTheDocument();
+  });
+
+  it("says a value the product lacks is added on Accept", async () => {
+    const looked = proposal({
+      kind: "product_update",
+      product_id: flourProductId,
+      capture: null,
+      match: {
+        strong: { product_id: flourProductId, reason: "lookup" },
+        candidates: [],
+        preselect: `update:${flourProductId}`,
+      },
+      vendor: null,
+      price: null,
+    });
+    mockApi(
+      routes(looked, {
+        [`GET /products/${flourProductId}`]: () =>
+          jsonResponse(200, { ...flourProduct, pack_qty: null, pack_unit: null, barcode: null }),
+      }),
+    );
+    renderApp(`/catalog/products/review/${proposalId}`);
+    const list = await screen.findByTestId("whats-new");
+    expect(list).toHaveTextContent("Pack: 1.5 kg (added on Accept)");
+    expect(list).toHaveTextContent("Barcode: 5012345000022 (added on Accept)");
+  });
+
+  it("says when a lookup update brings nothing new", async () => {
+    const field = (value: unknown) => ({
+      value,
+      source: "adapter" as const,
+      confidence: null,
+      via: "helper",
+      alternatives: [],
+      conflict: false,
+    });
+    const looked = proposal({
+      kind: "product_update",
+      product_id: flourProductId,
+      capture: null,
+      fields: {
+        title: field("Millstone All-Purpose Flour - 5 Lb"),
+        brand: field("Millstone"),
+        pack: field({ qty: "5.0", unit: "lb" }),
+        gtin: field("00012345678905"), // pii-scan: allow documented placeholder UPC
+      },
+      match: {
+        strong: { product_id: flourProductId, reason: "lookup" },
+        candidates: [],
+        preselect: `update:${flourProductId}`,
+      },
+      vendor: null,
+      price: null,
+    });
+    const photo = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b50", width: 600, height: 600 };
+    mockApi(
+      routes(looked, {
+        [`GET /products/${flourProductId}`]: () =>
+          jsonResponse(200, {
+            ...flourProduct,
+            photo: { ...photo, has_cutout: false, urls: media(600) },
+          }),
+      }),
+    );
+    renderApp(`/catalog/products/review/${proposalId}`);
+    expect(
+      await screen.findByText(/Nothing new: what was found matches this product/),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("whats-new")).not.toBeInTheDocument();
+    expect(screen.getByText("No new photo")).toBeInTheDocument();
   });
 
   it("shows a pack's pieces and takes typed ones as the person's", async () => {
