@@ -19,7 +19,7 @@ const PAGE = 20;
 /**
  * "USDA suggestions", the first section of Needs a bridge (10, 1G; DV2, DV6,
  * DV8, DV18–DV21). Grouped rows, never cards; no accept-all; a decided
- * ingredient leaves; values are saved as unconfirmed. Each row starts with the
+ * ingredient leaves; values are saved as checked. Each row starts with the
  * backend's suggested density and measures chosen, and the list shows 20 rows
  * at a time (issue 359).
  */
@@ -77,7 +77,7 @@ export function UsdaReviewSection() {
           {more > 0 ? (
             <div className="mt-3">
               <Button variant="secondary" onClick={() => setShown(shown + PAGE)}>
-                Show {Math.min(more, PAGE)} more of {more}
+                Show {Math.min(more, PAGE)} more ({more} not shown)
               </Button>
             </div>
           ) : null}
@@ -110,7 +110,7 @@ function GroupRow({ group }: { group: UsdaReviewGroup }) {
   const saved = (count: number) =>
     notice.show({
       tone: "success",
-      message: `Saved ${plural(count, "value")} for ${group.name} as unconfirmed. Confirm them on its page after checking a label.`,
+      message: `Saved ${plural(count, "value")} for ${group.name}, checked.`,
       action: { label: `Open ${group.name}`, to: `/catalog/ingredients/${group.ingredient_id}` },
     });
   const accept = (opts: { withDensity: boolean; replace?: boolean }) =>

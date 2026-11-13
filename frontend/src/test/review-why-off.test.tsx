@@ -79,6 +79,40 @@ describe("why the lines are off (2S, U1–U3)", () => {
     );
   });
 
+  it("turns a donation read as money off into one paid, in one click", async () => {
+    const donation = {
+      ...tortillaSaving,
+      id: "donation",
+      seq: 9,
+      raw_text: "ROUND UP FOR CHARITY 0.25",
+      line_total: "0.2500",
+      parent_line_id: null,
+    };
+    // Read as off: the lines come to the total less twice the donation.
+    const off = {
+      ...youPayPurchase,
+      printed_checks: null,
+      lines: [youPayPurchase.lines[0], donation],
+      lines_total: "1.00",
+      total: "1.50",
+    };
+    const calls = mockApi(
+      routes(() => off, {
+        [`PATCH ${base}/lines/donation`]: () => jsonResponse(200, off),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(base);
+    const why = await panel();
+    expect(within(why).getByText(/Line 9 reads as a donation \(\$0\.25\)/)).toBeVisible();
+    await user.click(within(why).getByRole("button", { name: "It's a donation I paid" }));
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === "PATCH").map((c) => [c.path, c.body])).toEqual([
+        [`${base}/lines/donation`, { line_kind: "fee", clear_parent: true }],
+      ]),
+    );
+  });
+
   it("joins a loose weight row to the item its weight at the rate comes to", async () => {
     const calls = mockApi(
       routes(() => youPayPurchase, {

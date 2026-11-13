@@ -102,7 +102,7 @@ describe("USDA suggestions (1G)", () => {
       replace_density: false,
     });
     expect(await screen.findByTestId("notice")).toHaveTextContent(
-      "Saved 2 values for garlic as unconfirmed. Confirm them on its page after checking a label.",
+      "Saved 2 values for garlic, checked.",
     );
     expect(screen.getByRole("link", { name: "Open garlic" })).toHaveAttribute(
       "href",
@@ -324,7 +324,7 @@ describe("USDA suggestions: paging (#359)", () => {
     expect(
       screen.getByText("25 ingredients with values to review · showing 20"),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Show 5 more of 5" }));
+    await user.click(screen.getByRole("button", { name: "Show 5 more (5 not shown)" }));
     expect(screen.getAllByTestId("usda-group")).toHaveLength(25);
     expect(screen.queryByRole("button", { name: /Show .* more/ })).not.toBeInTheDocument();
   });

@@ -111,6 +111,8 @@ class NeedsBridgeItem(ApiModel):
     product: ProductRef
     status: NormStatus
     observation_count: int
+    # Every current price of the product, so "3 of 12" says how many already compare.
+    price_count: int = 0
     latest_observed_at: datetime
     # "no density" for an ingredient in g whose products are all sold by volume:
     # measuring it in ml would bridge it without a density (issue 358).
@@ -230,12 +232,19 @@ class OpenRereadRef(ApiModel):
     status: Literal["pending", "running", "ready"]
 
 
+class LastTranscribe(ApiModel):
+    status: Literal["no_changes", "failed", "applied", "dismissed"]
+    at: datetime
+
+
 class RereadState(ApiModel):
     """What "Re-read lines" can offer on a receipt purchase (04, 2S)."""
 
     # Whether the latest reading kept the reader's answer, so Re-check can run.
     can_recheck: bool
     open: OpenRereadRef | None = None
+    # The last Transcribe again that closed, so the page can say it was tried.
+    last_transcribe: LastTranscribe | None = None
 
 
 class PrintedChecks(ApiModel):

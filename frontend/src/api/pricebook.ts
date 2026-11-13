@@ -220,6 +220,8 @@ export interface NeedsBridgeItem {
   /** No density, but every product of this g ingredient is sold by volume (issue 358). */
   switch_to_ml?: boolean;
   observation_count: number;
+  /** Every current price of the product; the rest already compare. */
+  price_count?: number;
   latest_observed_at: string;
 }
 

@@ -121,15 +121,23 @@ def _index() -> tuple[dict[str, standard.StandardEntry], dict[str, list[_Form]]]
     return exact, dict(by_head)
 
 
+def exact_entry(name: str) -> standard.StandardEntry | None:
+    """The standard entry whose own name, plural or listed spelling this name is."""
+    exact, _ = _index()
+    for key in (_fold(name), _exact_key(name)):
+        if key in exact:
+            return exact[key]
+    return None
+
+
 def match_entry(name: str, *, prep: bool = True) -> standard.StandardEntry | None:
     """The standard entry this ingredient name means, or None. Never applied here.
 
     With ``prep=False`` a readying word blocks the match, as before #463.
     """
-    exact, by_head = _index()
-    for key in (_fold(name), _exact_key(name)):
-        if key in exact:
-            return exact[key]
+    if (found := exact_entry(name)) is not None:
+        return found
+    _, by_head = _index()
     split = split_name(name)
     if split is None:
         return None

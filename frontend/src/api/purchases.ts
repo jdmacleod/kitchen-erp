@@ -259,6 +259,11 @@ export interface RereadState {
   /** The latest reading kept the reader's answer, so "Re-check the lines" can run. */
   can_recheck: boolean;
   open: { id: string; status: "pending" | "running" | "ready" } | null;
+  /** The last "Transcribe again" that closed, so a receipt still short says it was tried. */
+  last_transcribe?: {
+    status: "no_changes" | "failed" | "applied" | "dismissed";
+    at: string;
+  } | null;
 }
 
 export interface RemovedPurchase {

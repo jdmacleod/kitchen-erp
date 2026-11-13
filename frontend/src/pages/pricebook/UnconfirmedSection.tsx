@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type SyntheticEvent } from "react";
 import { Link, useLocation } from "react-router";
 import { errorMessage } from "../../api/client";
 import {
+  useConfirmIngredient,
   useUnconfirmed,
   useUnconfirmedAction,
   type UnconfirmedValue,
@@ -58,6 +59,12 @@ export function UnconfirmedSection() {
   const visible = items.slice(0, shown);
   const more = items.length - visible.length;
   const odd = items.filter((v) => v.problem).length;
+  // An ingredient's plausible density and measures, which Confirm all takes together.
+  const together = new Map<string, number>();
+  for (const v of items)
+    if (v.kind !== "product_density" && !v.problem)
+      together.set(v.ingredient_id, (together.get(v.ingredient_id) ?? 0) + 1);
+  const firsts = new Set<string>();
 
   return (
     <section
@@ -71,7 +78,8 @@ export function UnconfirmedSection() {
       </h2>
       <p className="mb-3 text-sm text-neutral-700 dark:text-neutral-300">
         {items.length} {items.length === 1 ? "value was" : "values were"} saved without a check.
-        Confirm each one against a label, or fix it.
+        Confirm each one against a label, or fix it. An ingredient&apos;s values can be confirmed
+        together.
         {odd > 0
           ? ` ${odd} look${odd === 1 ? "s" : ""} wrong and ${odd === 1 ? "is" : "are"} listed first.`
           : ""}
@@ -81,14 +89,24 @@ export function UnconfirmedSection() {
           className="divide-y divide-neutral-200 dark:divide-neutral-800"
           aria-label="Unconfirmed values"
         >
-          {visible.map((v) => (
-            <ValueRow key={`${v.kind}-${v.id}`} value={v} />
-          ))}
+          {visible.map((v) => {
+            const first =
+              !v.problem && v.kind !== "product_density" && !firsts.has(v.ingredient_id);
+            if (first) firsts.add(v.ingredient_id);
+            const count = together.get(v.ingredient_id) ?? 0;
+            return (
+              <ValueRow
+                key={`${v.kind}-${v.id}`}
+                value={v}
+                confirmAll={first && count > 1 ? count : 0}
+              />
+            );
+          })}
         </ul>
         {more > 0 ? (
           <div className="mt-3">
             <Button variant="secondary" onClick={() => setShown(shown + PAGE)}>
-              Show {Math.min(more, PAGE)} more of {more}
+              Show {Math.min(more, PAGE)} more ({more} not shown)
             </Button>
           </div>
         ) : null}
@@ -97,7 +115,34 @@ export function UnconfirmedSection() {
   );
 }
 
-function ValueRow({ value }: { value: UnconfirmedValue }) {
+/** "Confirm all 4 for honey": the ingredient's plausible values in one click. */
+function ConfirmAll({ value, count }: { value: UnconfirmedValue; count: number }) {
+  const confirm = useConfirmIngredient();
+  const notice = useNotice();
+  return (
+    <>
+      <Button
+        variant="secondary"
+        className="self-start"
+        disabled={confirm.isPending}
+        onClick={() =>
+          confirm.mutate(value.ingredient_id, {
+            onSuccess: (r) =>
+              notice.show({
+                tone: "success",
+                message: `Confirmed ${r.confirmed} ${r.confirmed === 1 ? "value" : "values"} for ${value.ingredient_name}.`,
+              }),
+          })
+        }
+      >
+        Confirm all {count} for {value.ingredient_name}
+      </Button>
+      {confirm.isError ? <Alert tone="error">{errorMessage(confirm.error)}</Alert> : null}
+    </>
+  );
+}
+
+function ValueRow({ value, confirmAll }: { value: UnconfirmedValue; confirmAll: number }) {
   const id = useId();
   const action = useUnconfirmedAction();
   const notice = useNotice();
@@ -208,6 +253,7 @@ function ValueRow({ value }: { value: UnconfirmedValue }) {
           </Button>
         </div>
       )}
+      {confirmAll > 0 ? <ConfirmAll value={value} count={confirmAll} /> : null}
       {action.isError ? <Alert tone="error">{errorMessage(action.error)}</Alert> : null}
     </li>
   );

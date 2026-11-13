@@ -8,6 +8,7 @@ import {
   resolvedSentence,
   tierLabel,
   useAskModel,
+  useAcceptExact,
   useResolveQueue,
   type ResolveDecision,
   type ResolveName,
@@ -163,6 +164,15 @@ export function ResolveRecipesPage() {
           >
             {countSentence(queue.data.names, queue.data.recipes)}
           </p>
+          <AcceptExact
+            count={items.filter((i) => i.proposals[0]?.exact).length}
+            onDone={(resolved, remaining) =>
+              notice.show({
+                tone: "success",
+                message: `Resolved ${resolved} ${resolved === 1 ? "name" : "names"} by the standard list. ${remaining} left.`,
+              })
+            }
+          />
           <ul
             ref={list}
             aria-label="Recipe names to resolve"
@@ -182,6 +192,36 @@ export function ResolveRecipesPage() {
         </>
       )}
     </>
+  );
+}
+
+/** "Accept the N exact matches": names the standard list settles by its own wording. */
+function AcceptExact({
+  count,
+  onDone,
+}: {
+  count: number;
+  onDone: (resolved: number, remaining: number) => void;
+}) {
+  const accept = useAcceptExact();
+  if (count === 0) return null;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <Button
+        disabled={accept.isPending}
+        onClick={() =>
+          accept.mutate(undefined, { onSuccess: (r) => onDone(r.resolved, r.remaining) })
+        }
+      >
+        {accept.isPending
+          ? "Accepting…"
+          : `Accept the ${count} exact ${count === 1 ? "match" : "matches"}`}
+      </Button>
+      <span className={`text-sm ${muted}`}>
+        Names that are a standard ingredient&apos;s own name, plural or spelling.
+      </span>
+      {accept.isError ? <Alert tone="error">{errorMessage(accept.error)}</Alert> : null}
+    </div>
   );
 }
 
