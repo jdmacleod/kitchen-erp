@@ -6,6 +6,7 @@ const SOURCE: Record<NameChange["source"], string> = {
   learned: "learned at this store",
   spelling: "spelling",
   vocabulary: "from your ingredients",
+  store_prefix: "the store's prefix left off",
 };
 
 /** Sentence case, as the server builds the name: "rvrbnd bread flour" → "Rvrbnd bread flour". */

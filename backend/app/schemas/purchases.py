@@ -556,7 +556,7 @@ class NameChange(ApiModel):
     index: int
     printed: str
     shown: str
-    source: Literal["learned", "spelling", "vocabulary"]
+    source: Literal["learned", "spelling", "vocabulary", "store_prefix"]
 
 
 class NamingRow(ApiModel):

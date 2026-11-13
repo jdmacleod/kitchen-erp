@@ -1,10 +1,13 @@
-"""A naming row offers the products its ingredient already has (#386)."""
+"""A naming row offers the products its ingredient already has, its own brand first (#386)."""
 
 from __future__ import annotations
 
 import uuid
 
+from app.models import Product
+from app.models.brands import Brand
 from app.services import resolution
+from app.services.naming_candidates import rank
 from tests.catalog_helpers import make_ingredient, make_product, seed_units_via_service
 from tests.pricebook_helpers import make_location
 from tests.resolution_helpers import make_receipt_purchase
@@ -36,3 +39,23 @@ async def test_a_row_lists_its_ingredients_products_closest_first(admin_client, 
     )
     # No ingredient in the wording: nothing to offer.
     assert rows["QPRT BAR"]["candidates"] == []
+
+
+def _product(name: str, brand: str | None = None, family: uuid.UUID | None = None) -> Product:
+    p = Product(id=uuid.uuid4(), name=name, brand=brand)
+    if family is not None:
+        p.house_brand = Brand(id=uuid.uuid4(), family_id=family, key="k", name=brand or "")
+    return p
+
+
+def test_the_lines_own_brand_or_brand_family_comes_first():
+    family = uuid.uuid4()
+    hilltop = _product("Whole milk", "Hilltop")
+    quayside = _product("Vitamin D whole milk", "Quayside Farms")
+    house = _product("Whole milk half gallon", "Quayside Select", family)
+    # By spelling alone, another store's whole milk leads.
+    assert rank("Whole milk", [quayside, house, hilltop])[0] is hilltop
+    # The line's brand, as printed, puts its own first.
+    assert rank("Whole milk", [hilltop, quayside], brand="Quayside Farms")[0] is quayside
+    # A store brand of the same family as the printed one counts as its own.
+    assert rank("Milk", [hilltop, house], brand="Quayside", family_id=family)[0] is house

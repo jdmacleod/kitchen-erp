@@ -61,6 +61,27 @@ async def find_brand(db: AsyncSession, text: str | None) -> Brand | None:
     ).scalar_one()
 
 
+async def families_of(db: AsyncSession, texts: set[str]) -> dict[str, uuid.UUID]:
+    """The brand family each text names, as find_brand reads it, in one query.
+    A text naming no listed brand is left out."""
+    wanted = {t: [k, *leading_keys(t, LONGEST_ALIAS)] for t in texts if (k := name_key(t))}
+    keys = {k for ks in wanted.values() for k in ks}
+    if not keys:
+        return {}
+    rows = await db.execute(
+        select(BrandAlias.alias_key, Brand.family_id)
+        .join(Brand, Brand.id == BrandAlias.brand_id)
+        .where(BrandAlias.alias_key.in_(keys))
+    )
+    family = dict(rows.tuples().all())
+    out = {}
+    for text, ks in wanted.items():
+        hits = [k for k in ks if k in family]
+        if hits:
+            out[text] = family[max(hits, key=lambda k: len(k.split()))]
+    return out
+
+
 async def link_product(db: AsyncSession, product: Product) -> bool:
     """Point `product.brand_id` at the brand its text names. True if it changed."""
     brand = await find_brand(db, product.brand)
