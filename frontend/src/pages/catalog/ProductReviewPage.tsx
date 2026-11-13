@@ -192,6 +192,8 @@ function Review({ proposal }: { proposal: Proposal }) {
       }
     : null;
   const [priceEdit, setPriceEdit] = useState<PriceBasis | null>(priceConflict ? pagePrice : null);
+  // The posted price Accept would record, as edited, or none when it records none.
+  const postedPrice = recordPrice ? (priceEdit ?? pagePrice) : null;
   const priceValid =
     !priceEdit ||
     (DECIMAL.test(priceEdit.amount.trim()) &&
@@ -515,21 +517,20 @@ function Review({ proposal }: { proposal: Proposal }) {
           {match?.startsWith("update:") && targetProduct.data && !reading ? (
             <WhatsNew
               changes={fieldChanges(
-                REVIEWED.filter(([name]) => name !== "title").map(([name]) => [
-                  name,
-                  fields[name]?.value,
-                ]),
+                // What Accept would write: the person's choice, else what was found.
+                REVIEWED.filter(
+                  ([name]) => name !== "title" || touched.has(name) || name in typed,
+                ).map(([name]) => {
+                  const chosen = touched.has(name) || name in typed;
+                  return [name, chosen ? chosenValue(name) : fields[name]?.value, chosen];
+                }),
                 (name) =>
                   name === "gtin" ? (targetProduct.data.barcode ?? undefined) : current(name),
               )}
               labels={Object.fromEntries(REVIEWED)}
               headingClass={reviewHeading}
               photos={productPhotos.length}
-              price={
-                proposal.price && vendor && vendor.locations.length > 0
-                  ? `${showPrice(proposal.price)} at ${vendor.name}`
-                  : null
-              }
+              price={postedPrice && vendor ? `${showPrice(postedPrice)} at ${vendor.name}` : null}
             />
           ) : null}
 

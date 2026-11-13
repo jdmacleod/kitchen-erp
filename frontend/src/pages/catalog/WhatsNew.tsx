@@ -37,7 +37,12 @@ export function WhatsNew({
       <ul data-testid="whats-new" className="flex flex-col gap-1 text-sm">
         {/* Accept fills what the product lacks; a value it has is kept unless chosen. */}
         {changes.map((c) =>
-          c.from === "—" ? (
+          c.chosen ? (
+            <li key={c.name}>
+              {labels[c.name]}: <span className={muted}>{c.from}</span> → {c.to}{" "}
+              <span className={muted}>(your choice)</span>
+            </li>
+          ) : c.from === "—" ? (
             <li key={c.name}>
               {labels[c.name]}: {c.to} <span className={muted}>(added on Accept)</span>
             </li>

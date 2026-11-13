@@ -340,6 +340,10 @@ describe("product review", () => {
 
     // Choosing the helper's name replaces the product's; the untouched brand is kept.
     await user.click(within(name).getByRole("radio", { name: /MILLSTONE PLAIN FLOUR/ }));
+    // What's new follows the choice: Accept now writes that name.
+    expect(screen.getByTestId("whats-new")).toHaveTextContent(
+      `Name: ${flourProduct.name} → MILLSTONE PLAIN FLOUR (your choice)`,
+    );
     await user.click(screen.getByRole("button", { name: "Accept" }));
     await waitFor(() => expect(calls.some((c) => c.path.endsWith("/accept"))).toBe(true));
     const sent = calls.find((c) => c.path.endsWith("/accept"))!.body as {

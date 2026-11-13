@@ -47,6 +47,8 @@ export interface FieldChange {
   name: string;
   from: string;
   to: string;
+  /** The person chose or typed it, so Accept writes it over what the product has. */
+  chosen: boolean;
 }
 
 /**
@@ -54,14 +56,14 @@ export interface FieldChange {
  * reads them: 750.0 ml and 750 ml are the same, and so is a brand in other capitals.
  */
 export function fieldChanges(
-  fields: [string, unknown][],
+  fields: [string, unknown, boolean][],
   current: (name: string) => unknown,
 ): FieldChange[] {
-  return fields.flatMap(([name, found]) => {
+  return fields.flatMap(([name, found, chosen]) => {
     if (found === undefined || found === null || found === "") return [];
     const from = showValue(name, current(name));
     const to = showValue(name, found);
-    return from.toLowerCase() === to.toLowerCase() ? [] : [{ name, from, to }];
+    return from.toLowerCase() === to.toLowerCase() ? [] : [{ name, from, to, chosen }];
   });
 }
 
