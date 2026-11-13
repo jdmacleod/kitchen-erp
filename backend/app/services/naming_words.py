@@ -9,6 +9,7 @@ the page can show it and a person can undo it. Computed per request, never store
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass, field, replace
 
@@ -19,6 +20,13 @@ from app.catalog import standard
 from app.catalog.line_words import Vocabulary, WordChange, suggest_words, unread
 from app.models import Ingredient, IngredientAlias, Product
 from app.services import line_words, naming_brands, spelling
+
+# A store's one-letter department mark on the first word ("R-RADISH", "A-TOMATOES"):
+# shown without it when the rest is a word the household knows, as a change the
+# person can undo, so "T-BONE" stays unless "bone" alone reads better to them.
+_STORE_PREFIX = re.compile(r"[A-Z]-([A-Z]{3,})")
+# Flags some tills print after the name ("MILK NP": no points), never a word of it.
+_TRAILING_FLAGS = frozenset({"NP"})
 
 
 def sentence(words: list[str]) -> str:
@@ -69,6 +77,8 @@ async def suggest(
     db: AsyncSession, known: NamingWords, vendor_id: uuid.UUID, words: list[str]
 ) -> Suggested:
     """The suggested name and brand for these printed words (#384, #390)."""
+    while len(words) > 1 and words[-1] in _TRAILING_FLAGS:
+        words = words[:-1]
     if vendor_id not in known.learned:
         found = await line_words.expansions(db, vendor_id)
         known.learned[vendor_id] = {
@@ -80,6 +90,10 @@ async def suggest(
     changes = suggest_words(
         words, learned=known.learned[vendor_id], spelled=spelled, vocabulary=known.vocabulary
     )
+    prefixed = _STORE_PREFIX.fullmatch(words[0]) if words else None
+    bare = prefixed.group(1).lower() if prefixed else ""
+    if bare and known.vocabulary.knows(bare) and all(c.index != 0 for c in changes):
+        changes = [WordChange(0, words[0], bare, "store_prefix"), *changes]
     shown = [w.lower() for w in words]
     for change in changes:
         shown[change.index] = change.shown

@@ -10554,7 +10554,8 @@
             "enum": [
               "learned",
               "spelling",
-              "vocabulary"
+              "vocabulary",
+              "store_prefix"
             ],
             "title": "Source",
             "type": "string"

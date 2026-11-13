@@ -28,6 +28,7 @@ from app.models.catalog import Ingredient
 from app.schemas.catalog import IngredientCreate, IngredientMatch, ProductCreate
 from app.schemas.purchases import NameProductRow
 from app.services import (
+    brands,
     catalog,
     identify_queue,
     line_words,
@@ -128,12 +129,16 @@ async def naming_rows(db: AsyncSession, groups: list[dict] | None = None) -> lis
         r["ingredient"].id for r in rows if r["ingredient"] and r["ingredient"].kind == "ingredient"
     }
     products = await naming_candidates.by_ingredient(db, ids)
+    families: dict[str, uuid.UUID | None] = {}
     for r in rows:
         match = r["ingredient"]
         found = products.get(match.id, []) if match and match.kind == "ingredient" else []
-        r["candidates"] = [
-            naming_candidates.brief(p) for p in naming_candidates.rank(r["name"], found)
-        ]
+        brand = r["brand"]
+        if found and brand and brand not in families:
+            named = await brands.find_brand(db, brand)
+            families[brand] = named.family_id if named else None
+        ranked = naming_candidates.rank(r["name"], found, brand, families.get(brand or ""))
+        r["candidates"] = [naming_candidates.brief(p) for p in ranked]
     return rows
 
 

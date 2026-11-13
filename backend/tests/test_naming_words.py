@@ -86,3 +86,26 @@ async def test_a_row_is_confident_only_when_every_field_came_from_a_sure_source(
     assert rows["WHOLE MILK"]["latest_at"] is not None
     # "qprt" is read by nothing: the name isn't sure, whatever the ingredient.
     assert rows["QPRT MILK"]["confident"] is False
+
+
+async def test_a_trailing_till_flag_and_a_store_prefix_stay_out_of_the_name(
+    admin_client, admin, db_session
+):
+    await seed_units_via_service(db_session)
+    r = await admin_client.post(
+        "/api/v1/ingredients", json={"name": "radish", "category": "produce"}
+    )
+    assert r.status_code == 201, r.text
+    await _waiting(admin_client, admin, db_session, ["HILLTOP SKYR NP 3.10", "R-RADISH BUNCH 2.10"])
+    rows = await _rows(admin_client)
+    # "NP" is a till flag, never a word of the name.
+    assert rows["HILLTOP SKYR NP"]["name"].lower().split()[-1] == "skyr"
+    # The store's one-letter prefix is left off, as a change the person can undo.
+    radish = rows["R-RADISH BUNCH"]
+    assert radish["name"] == "Radish bunch"
+    assert radish["name_changes"][0] == {
+        "index": 0,
+        "printed": "R-RADISH",
+        "shown": "radish",
+        "source": "store_prefix",
+    }

@@ -38,15 +38,28 @@ async def by_ingredient(
     return out
 
 
-def rank(name: str, products: list[Product]) -> list[Product]:
-    """The products closest to ``name``: by the sameness verdict, then by spelling."""
+def rank(
+    name: str,
+    products: list[Product],
+    brand: str | None = None,
+    family_id: uuid.UUID | None = None,
+) -> list[Product]:
+    """The products closest to ``name``: the line's own brand or brand family first
+    (a store brand's milk before another store's), then by the sameness verdict,
+    then by spelling."""
     new = sameness.Facts(name=name)
     key = sameness.key_text(name) or name.lower()
 
-    def order(p: Product) -> tuple[int, float]:
+    def ours(p: Product) -> bool:
+        if brand and p.brand and p.brand.casefold() == brand.casefold():
+            return True
+        house = p.house_brand
+        return family_id is not None and house is not None and house.family_id == family_id
+
+    def order(p: Product) -> tuple[int, int, float]:
         verdict = sameness.compare(new, sameness.Facts(name=p.name, brand=p.brand))
         close = SequenceMatcher(None, key, sameness.key_text(p.name, p.brand) or p.name.lower())
-        return _ORDER[verdict.kind], -close.ratio()
+        return 0 if ours(p) else 1, _ORDER[verdict.kind], -close.ratio()
 
     return sorted(products, key=order)[:LIMIT]
 
