@@ -325,7 +325,7 @@ describe("product review", () => {
     // What's new names only the barcode: the brand in other capitals is the same, and
     // a store with no locations brings no price.
     expect(screen.getByTestId("whats-new")).toHaveTextContent(
-      /^Barcode: 012345678905 → 5012345000022$/,
+      /^Barcode: found 5012345000022 \(it keeps 012345678905 unless you choose 5012345000022 under Edit details\)$/,
     );
 
     await user.click(screen.getByRole("button", { name: "Edit details" }));
@@ -347,6 +347,31 @@ describe("product review", () => {
     };
     expect(sent.edits).toEqual({ title: "MILLSTONE PLAIN FLOUR" });
     expect(await screen.findByText("Updated MILLSTONE PLAIN FLOUR.")).toBeInTheDocument();
+  });
+
+  it("says a value the product lacks is added on Accept", async () => {
+    const looked = proposal({
+      kind: "product_update",
+      product_id: flourProductId,
+      capture: null,
+      match: {
+        strong: { product_id: flourProductId, reason: "lookup" },
+        candidates: [],
+        preselect: `update:${flourProductId}`,
+      },
+      vendor: null,
+      price: null,
+    });
+    mockApi(
+      routes(looked, {
+        [`GET /products/${flourProductId}`]: () =>
+          jsonResponse(200, { ...flourProduct, pack_qty: null, pack_unit: null, barcode: null }),
+      }),
+    );
+    renderApp(`/catalog/products/review/${proposalId}`);
+    const list = await screen.findByTestId("whats-new");
+    expect(list).toHaveTextContent("Pack: 1.5 kg (added on Accept)");
+    expect(list).toHaveTextContent("Barcode: 5012345000022 (added on Accept)");
   });
 
   it("says when a lookup update brings nothing new", async () => {
