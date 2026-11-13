@@ -29,3 +29,9 @@ class UnconfirmedValueOut(ApiModel):
 
 class UnconfirmedList(ApiModel):
     items: list[UnconfirmedValueOut]
+
+
+class ConfirmedCount(ApiModel):
+    """How many values a Confirm all confirmed."""
+
+    confirmed: int

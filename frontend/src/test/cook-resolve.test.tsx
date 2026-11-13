@@ -227,6 +227,35 @@ describe("the resolve page (UI-7.16)", () => {
     ]);
   });
 
+  it("accepts every exact standard-list match in one click", async () => {
+    const [first, ...rest] = resolveQueue.items;
+    const exactFirst = {
+      ...first,
+      proposals: first.proposals.map((p, i) => (i === 0 ? { ...p, exact: true } : p)),
+    };
+    const calls = mount(
+      {
+        "POST /recipes/resolve/exact": () => jsonResponse(200, { resolved: 1, remaining: 2 }),
+      },
+      { ...resolveQueue, items: [exactFirst, ...rest] },
+    );
+    const user = userEvent.setup();
+    await rows();
+    await user.click(screen.getByRole("button", { name: "Accept the 1 exact match" }));
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path === "/recipes/resolve/exact")).toBe(
+        true,
+      ),
+    );
+    expect(await notice()).toHaveTextContent("Resolved 1 name by the standard list. 2 left.");
+  });
+
+  it("offers no bulk accept when no proposal is exact", async () => {
+    mount();
+    await rows();
+    expect(screen.queryByRole("button", { name: /exact match/ })).not.toBeInTheDocument();
+  });
+
   it("a collision shows the holder with Use {holder}, which re-posts with that id, and Choose another gives the picker back", async () => {
     let posts = 0;
     const calls = mount({

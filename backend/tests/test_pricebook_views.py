@@ -544,3 +544,13 @@ async def test_ingredient_history_keeps_the_cheapest_price_of_each_day(admin_cli
     assert point["observation_id"] == cheap["id"] and point["norm_unit_price"] == "0.006000"
     # The range still covers every price in the window, not just the daily point.
     assert (h["low"], h["high"]) == ("0.006000", "0.008000")
+
+
+async def test_needs_bridge_counts_the_products_prices_that_already_compare(admin_client):
+    chain_a, _, indie = await three_locations(admin_client)
+    shallots = await make_product(admin_client, "Shallot", "Loose shallots")
+    await shelf(admin_client, shallots["id"], chain_a["id"], "2.99", qty="1", unit="lb")
+    await shelf(admin_client, shallots["id"], indie["id"], "1.49", qty="1", unit="each")
+    [item] = (await admin_client.get("/api/v1/price-book/needs-bridge")).json()["items"]
+    # One price waits for a pack size; the price by weight already compares.
+    assert (item["status"], item["observation_count"], item["price_count"]) == ("no_pack", 1, 2)

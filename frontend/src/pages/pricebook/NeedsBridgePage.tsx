@@ -110,7 +110,7 @@ export function NeedsBridgePage() {
                     <th className="py-2 pr-3">Ingredient</th>
                     <th className="py-2 pr-3">Product</th>
                     <th className="py-2 pr-3">Missing</th>
-                    <th className="py-2 pr-3 text-right">Prices</th>
+                    <th className="py-2 pr-3 text-right">Prices waiting</th>
                     <th className="py-2 pr-3">Latest</th>
                     <th className="py-2">Fix</th>
                   </tr>

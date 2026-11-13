@@ -398,7 +398,7 @@ async def _usda(db: AsyncSession) -> list[InboxItem]:
         InboxItem(
             kind="usda",
             title=f"{count} {noun} USDA densities to review",
-            detail="Suggestions from USDA, saved as unconfirmed until you check them.",
+            detail="Suggestions from USDA. What you accept here counts as checked.",
             action_label="Review",
             action_route="/catalog/bridges#usda",
             created_at=oldest,

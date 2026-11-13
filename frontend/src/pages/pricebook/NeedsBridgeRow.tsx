@@ -90,7 +90,12 @@ export function NeedsBridgeRow({
         <td className="py-2 pr-3">
           <Badge tone="warn">{inPieces ? "pack has no weight" : normStatusText[item.status]}</Badge>
         </td>
-        <td className="py-2 pr-3 text-right tabular-nums">{item.observation_count}</td>
+        <td className="py-2 pr-3 text-right tabular-nums">
+          {/* "6 of 22": how many of its prices wait, when others already compare. */}
+          {item.price_count && item.price_count > item.observation_count
+            ? `${item.observation_count} of ${item.price_count}`
+            : item.observation_count}
+        </td>
         <td className="py-2 pr-3 whitespace-nowrap">{formatDate(item.latest_observed_at)}</td>
         <td className="py-2">
           <FixCell

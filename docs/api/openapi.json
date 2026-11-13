@@ -2620,6 +2620,21 @@
         "title": "CompareRow",
         "type": "object"
       },
+      "ConfirmedCount": {
+        "additionalProperties": false,
+        "description": "How many values a Confirm all confirmed.",
+        "properties": {
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "confirmed"
+        ],
+        "title": "ConfirmedCount",
+        "type": "object"
+      },
       "ConformedNameOut": {
         "additionalProperties": false,
         "description": "A typed ingredient name as it would be saved, and why it changed (#345).",
@@ -11021,6 +11036,11 @@
             "title": "Observation Count",
             "type": "integer"
           },
+          "price_count": {
+            "default": 0,
+            "title": "Price Count",
+            "type": "integer"
+          },
           "product": {
             "$ref": "#/components/schemas/ProductRef"
           },
@@ -18055,6 +18075,26 @@
         "title": "ResolveDecisionOut",
         "type": "object"
       },
+      "ResolveExactOut": {
+        "additionalProperties": false,
+        "description": "Names settled by \"Accept exact matches\", and how many names are still queued.",
+        "properties": {
+          "remaining": {
+            "title": "Remaining",
+            "type": "integer"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resolved",
+          "remaining"
+        ],
+        "title": "ResolveExactOut",
+        "type": "object"
+      },
       "ResolveName": {
         "additionalProperties": false,
         "description": "One unmatched name across every recipe that uses it (criterion 15).",
@@ -18113,6 +18153,11 @@
               }
             ],
             "title": "Category"
+          },
+          "exact": {
+            "default": false,
+            "title": "Exact",
+            "type": "boolean"
           },
           "fdc_description": {
             "anyOf": [
@@ -25668,6 +25713,50 @@
         ]
       }
     },
+    "/api/v1/ingredients/{ingredient_id}/bridges/confirm": {
+      "post": {
+        "description": "Confirm an ingredient's unconfirmed density and measures, implausible ones aside.",
+        "operationId": "confirm_ingredient_api_v1_ingredients__ingredient_id__bridges_confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmedCount"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Ingredient",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/v1/ingredients/{ingredient_id}/convert": {
       "post": {
         "operationId": "convert_bench_api_v1_ingredients__ingredient_id__convert_post",
@@ -32138,6 +32227,28 @@
           }
         },
         "summary": "Resolve Ask",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/resolve/exact": {
+      "post": {
+        "description": "Every queued name that is a standard entry's own name or listed spelling, at once.",
+        "operationId": "resolve_exact_api_v1_recipes_resolve_exact_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveExactOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Resolve Exact",
         "tags": [
           "recipes"
         ]
