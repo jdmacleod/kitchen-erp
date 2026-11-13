@@ -95,3 +95,20 @@ export function useUnconfirmedAction() {
     },
   });
 }
+
+/** Confirm one ingredient's unconfirmed density and measures together; implausible ones stay. */
+export function useConfirmIngredient() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (ingredientId: string) =>
+      api<{ confirmed: number }>(`/ingredients/${ingredientId}/bridges/confirm`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: unconfirmedKey });
+      void client.invalidateQueries({ queryKey: catalogKeys.ingredients });
+      void client.invalidateQueries({ queryKey: ["price-book"] });
+      void client.invalidateQueries({ queryKey: ["inbox"] });
+    },
+  });
+}

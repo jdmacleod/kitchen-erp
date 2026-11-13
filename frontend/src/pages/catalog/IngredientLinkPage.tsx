@@ -137,6 +137,21 @@ export function IngredientLinkPage() {
             </EmptyState>
           ) : (
             <Card>
+              <LinkExact
+                rows={toReview.filter(
+                  (r) =>
+                    r.suggestion &&
+                    !r.conflict &&
+                    r.suggestion.name.toLowerCase() === r.name.toLowerCase(),
+                )}
+                onDone={(count) => {
+                  setTally((t) => ({ ...t, linked: t.linked + count }));
+                  notice.show({
+                    tone: "success",
+                    message: `Linked ${plural(count, "ingredient")} to the standard names they already have.`,
+                  });
+                }}
+              />
               <ul
                 className="divide-y divide-neutral-200 dark:divide-neutral-800"
                 aria-label="Ingredients to review"
@@ -151,6 +166,44 @@ export function IngredientLinkPage() {
         </>
       )}
     </>
+  );
+}
+
+/** Rows whose suggested standard name is their own name: linked in one click. */
+function LinkExact({ rows, onDone }: { rows: LinkRow[]; onDone: (count: number) => void }) {
+  const action = useLinkAction();
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  if (rows.length < 2) return null;
+  const linkAll = async () => {
+    setWorking(true);
+    setError(null);
+    let done = 0;
+    try {
+      for (const row of rows) {
+        if (!row.suggestion) continue;
+        await action.mutateAsync({ id: row.id, action: "link", standard_key: row.suggestion.key });
+        done += 1;
+      }
+    } catch (e) {
+      setError(e);
+    } finally {
+      setWorking(false);
+      if (done > 0) onDone(done);
+    }
+  };
+  return (
+    <div className="mb-3 flex flex-col gap-2 border-b border-neutral-200 pb-3 dark:border-neutral-800">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <Button variant="secondary" disabled={working} onClick={() => void linkAll()}>
+          {working ? "Linking…" : `Link the ${rows.length} that match exactly`}
+        </Button>
+        <span className="text-sm text-neutral-600 dark:text-neutral-400">
+          Each already has its standard name.
+        </span>
+      </div>
+      {error ? <Alert tone="error">{errorMessage(error)}</Alert> : null}
+    </div>
   );
 }
 

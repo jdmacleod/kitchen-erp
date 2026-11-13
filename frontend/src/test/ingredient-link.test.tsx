@@ -108,6 +108,39 @@ describe("link page (1G)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Choose…" })).toHaveFocus());
   });
 
+  it("links every row that already has its standard name in one click", async () => {
+    const exact = (id: string, name: string): LinkRow => ({
+      ...sorrel,
+      id,
+      name,
+      suggestion: { ...scallionEntry, key: name.replace(/ /g, "-"), name },
+    });
+    const pepper = exact("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6a11", "fell pepper");
+    const spice = exact("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6a12", "tarn spice mix");
+    const state = { page: { to_review: [pepper, spice, sorrel], skipped: [] } as LinkPage };
+    const calls = mockApi(
+      routes(state, {
+        [`POST /ingredients/${pepper.id}/link`]: () =>
+          jsonResponse(200, { ...flour, id: pepper.id }),
+        [`POST /ingredients/${spice.id}/link`]: () => {
+          state.page = { to_review: [sorrel], skipped: [] };
+          return jsonResponse(200, { ...flour, id: spice.id });
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients/link");
+    await user.click(await screen.findByRole("button", { name: "Link the 2 that match exactly" }));
+    await waitFor(() => expect(screen.getAllByTestId("link-row")).toHaveLength(1));
+    expect(calls.filter((c) => c.method === "POST").map((c) => [c.path, c.body])).toEqual([
+      [`/ingredients/${pepper.id}/link`, { standard_key: "fell-pepper" }],
+      [`/ingredients/${spice.id}/link`, { standard_key: "tarn-spice-mix" }],
+    ]);
+    expect(
+      await screen.findByText("Linked 2 ingredients to the standard names they already have."),
+    ).toBeInTheDocument();
+  });
+
   it("opens the merge panel on a taken name, focuses Cancel, and merges with the ticked measures", async () => {
     const state = { page: { to_review: [onions], skipped: [] } as LinkPage };
     const preview: MergeResult = {

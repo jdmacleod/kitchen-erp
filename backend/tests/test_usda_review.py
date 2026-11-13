@@ -108,7 +108,7 @@ async def test_an_each_ingredient_gets_measures_only_and_only_with_a_medium(
     }
 
 
-async def test_accepting_saves_unconfirmed_usda_values_and_recomputes(
+async def test_accepting_saves_checked_usda_values_and_recomputes(
     admin_client, db_session, owner_conn, tmp_path
 ):
     await _load(db_session, tmp_path)
@@ -127,7 +127,8 @@ async def test_accepting_saves_unconfirmed_usda_values_and_recomputes(
     body = r.json()
     assert body["saved"] == 1
     assert body["ingredient"]["density_source"] == "usda"
-    assert body["ingredient"]["density_confirmed"] is False
+    # Choosing it on the review is the check: it waits on no second list.
+    assert body["ingredient"]["density_confirmed"] is True
     assert Decimal(body["ingredient"]["density_g_per_ml"]) == Decimal("0.528")
     after = (await admin_client.get(f"/api/v1/price-observations/{by_cup['id']}")).json()
     assert after["norm"]["status"] == "ok" and after["norm"]["bridge_kind"] == "density"
@@ -162,7 +163,7 @@ async def test_a_density_set_since_reading_is_a_409_then_replace(
     assert r.json()["ingredient"]["density_source"] == "measured"
     measures = r.json()["ingredient"]["measures"]
     assert [(m["label"], m["source"], m["confirmed"]) for m in measures] == [
-        ("clove", "usda", False)
+        ("clove", "usda", True)
     ]
 
 

@@ -142,6 +142,21 @@ async def test_the_usda_guesses_are_kept_until_the_catalog_version_changes(
     assert [v["version"] for v in versions] != [kept["version"]]
 
 
+async def test_a_skipped_relink_leaves_the_count_too(admin_client, db_session, owner_conn):
+    await seed_units_via_service(db_session)
+    await _foods(owner_conn)
+    beans = await make_ingredient(admin_client, "lanternbeans")
+    await _link(owner_conn, beans, 900061)
+    [s] = by_kind(await suggestions(admin_client), "usda_link")
+    assert s["after"] == "Lanternbeans, raw"
+    r = await admin_client.post("/api/v1/catalog/cleanup/skip", json={"keys": [s["key"]]})
+    assert r.status_code == 204
+    # The inbox counts without searching, yet reads the kept relink the skip was keyed by.
+    assert by_kind(await suggestions(admin_client), "usda_link") == []
+    items = (await admin_client.get("/api/v1/inbox")).json()["items"]
+    assert [i for i in items if i["kind"] == "catalog_cleanup"] == []
+
+
 def test_the_guess_migration_applies_and_reverses():
     run_alembic("downgrade", "0059")
     run_alembic("upgrade", "head")

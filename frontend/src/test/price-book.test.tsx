@@ -404,6 +404,7 @@ describe("needs a bridge", () => {
         },
         status: "no_pack",
         observation_count: 1,
+        price_count: 4,
         latest_observed_at: "2026-09-10T15:00:00Z",
       },
     ];
@@ -425,6 +426,8 @@ describe("needs a bridge", () => {
       `/catalog/ingredients/${flourId}#density-heading`,
     );
     expect(rows[1]).toHaveTextContent("no pack size");
+    // Its other three prices already compare.
+    expect(rows[1]).toHaveTextContent("1 of 4");
     expect(within(rows[1]).getByRole("button", { name: "Set the pack" })).toHaveAttribute(
       "aria-expanded",
       "false",

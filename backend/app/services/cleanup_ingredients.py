@@ -146,10 +146,10 @@ async def usda_links(db: AsyncSession, rows: list[Ingredient], *, guess: bool) -
         fit = fits(ingredient.name, description)
         if fit.verdict != "fits":
             misfits.append((ingredient, fdc_id, description, fit))
-    kept = (
-        await cleanup_guesses.guesses(db, "usda_link", {m[0].name for m in misfits})
-        if guess
-        else {}
+    # A count reads the kept guesses without searching, so a skip, keyed by the
+    # relink it offered, holds in the count as on the page.
+    kept = await cleanup_guesses.guesses(
+        db, "usda_link", {m[0].name for m in misfits}, search=guess
     )
     ids = {k.fdc_id for k in kept.values() if k.fdc_id is not None}
     foods = (
