@@ -141,6 +141,32 @@ describe("link page (1G)", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps a failure in the batch in view after the list refreshes", async () => {
+    const exact = (id: string, name: string): LinkRow => ({
+      ...sorrel,
+      id,
+      name,
+      suggestion: { ...scallionEntry, key: name.replace(/ /g, "-"), name },
+    });
+    const first = exact("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6a21", "fell pepper");
+    const second = exact("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6a22", "tarn spice mix");
+    const state = { page: { to_review: [first, second, sorrel], skipped: [] } as LinkPage };
+    mockApi(
+      routes(state, {
+        [`POST /ingredients/${first.id}/link`]: () => {
+          state.page = { to_review: [second, sorrel], skipped: [] };
+          return jsonResponse(200, { ...flour, id: first.id });
+        },
+        [`POST /ingredients/${second.id}/link`]: () =>
+          errorResponse(409, "standard_taken", "That standard name is taken."),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients/link");
+    await user.click(await screen.findByRole("button", { name: "Link the 2 that match exactly" }));
+    expect(await screen.findByText("That standard name is taken.")).toBeInTheDocument();
+  });
+
   it("opens the merge panel on a taken name, focuses Cancel, and merges with the ticked measures", async () => {
     const state = { page: { to_review: [onions], skipped: [] } as LinkPage };
     const preview: MergeResult = {

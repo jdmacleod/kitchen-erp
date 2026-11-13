@@ -174,7 +174,9 @@ function LinkExact({ rows, onDone }: { rows: LinkRow[]; onDone: (count: number) 
   const action = useLinkAction();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  if (rows.length < 2) return null;
+  // Kept while it works or holds an error: each link refreshes the list, so a
+  // failure on the last rows would otherwise vanish with the button.
+  if (rows.length < 2 && !working && !error) return null;
   const linkAll = async () => {
     setWorking(true);
     setError(null);
@@ -195,7 +197,11 @@ function LinkExact({ rows, onDone }: { rows: LinkRow[]; onDone: (count: number) 
   return (
     <div className="mb-3 flex flex-col gap-2 border-b border-neutral-200 pb-3 dark:border-neutral-800">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Button variant="secondary" disabled={working} onClick={() => void linkAll()}>
+        <Button
+          variant="secondary"
+          disabled={working || rows.length === 0}
+          onClick={() => void linkAll()}
+        >
           {working ? "Linking…" : `Link the ${rows.length} that match exactly`}
         </Button>
         <span className="text-sm text-neutral-600 dark:text-neutral-400">

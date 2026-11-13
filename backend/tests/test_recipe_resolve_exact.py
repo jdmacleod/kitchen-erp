@@ -8,7 +8,10 @@ by its head noun and qualifiers stays for a person. Recipes here are invented.
 from __future__ import annotations
 
 import httpx
+import pytest
 
+from app.core.errors import ApiError
+from app.services import recipe_resolution
 from tests.catalog_helpers import make_ingredient
 from tests.recipes_helpers import TempRepo, recipes_repo  # noqa: F401
 from tests.test_recipe_resolution import queue, rescan
@@ -55,3 +58,25 @@ async def test_exact_standard_matches_are_marked_and_accepted_together(
         if i["name"] == "rutabaga"
     ]
     assert len(roots) == 1
+
+
+async def test_a_name_another_ingredient_holds_stays_and_the_rest_go_on(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+):
+    recipes_repo.write("pantry-toss.cook", PANTRY)
+    await rescan(admin_client)
+    decide = recipe_resolution.decide
+
+    async def refusing(db, user, payload):
+        if payload.name_norm == "lemons":
+            raise ApiError(409, "alias_taken", "'lemons' is already a spelling of another.")
+        return await decide(db, user, payload)
+
+    monkeypatch.setattr(recipe_resolution, "decide", refusing)
+    r = await admin_client.post("/api/v1/recipes/resolve/exact")
+    assert r.status_code == 200, r.text
+    left = sorted(i["name_norm"] for i in (await queue(admin_client))["items"])
+    assert left == ["fresh basil", "lemons"]
+    assert r.json() == {"resolved": 3, "remaining": 2}

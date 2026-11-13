@@ -52,6 +52,11 @@ async def accept_exact(db: AsyncSession, user: AppUser) -> int:
         try:
             out = await recipe_resolution.decide(db, user, decision)
         except ApiError as exc:
+            if exc.status_code == 409:
+                # Its spelling or name is another ingredient's (alias_taken): one for a
+                # person to settle, so it stays in the queue and the rest go on.
+                await db.rollback()
+                continue
             if exc.status_code != 404:
                 raise
             # An earlier decision's learned spelling already settled it: still one of ours.
