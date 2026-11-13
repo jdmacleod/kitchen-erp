@@ -76,8 +76,9 @@ function Row({ item, phoneHidden }: { item: InboxItem; phoneHidden: boolean }) {
 }
 
 /**
- * Needs you: everything the system could not finish on its own, oldest first
- * (docs/spec/09, Unified inbox; 10, Home).
+ * Needs you: everything the system could not finish on its own, receipts first,
+ * then products, then the catalog, oldest first within each, in the server's
+ * order (docs/spec/09, Unified inbox; 10, Home).
  *
  * An error is never shown as an empty inbox (D6): "Nothing needs you" is a claim,
  * and during an outage it would be false.
@@ -156,7 +157,7 @@ export function InboxList() {
         </Button>
       ) : null}
       <p className="mt-3 border-t border-neutral-200 pt-3 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
-        Anything the system can&apos;t finish on its own lands here, oldest first, and leaves once
+        Anything the system can&apos;t finish on its own lands here, receipts first, and leaves once
         it&apos;s done.
       </p>
     </Card>
