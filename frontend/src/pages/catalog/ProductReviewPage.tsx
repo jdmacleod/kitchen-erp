@@ -57,7 +57,8 @@ import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit } from "./ProductForm";
 import { defaultMain, PhotoSize, pixels } from "./reviewPhotos";
-import { comparedPrice, parsePieces, showPrice, showValue } from "./reviewValues";
+import { comparedPrice, fieldChanges, parsePieces, showPrice, showValue } from "./reviewValues";
+import { WhatsNew } from "./WhatsNew";
 
 export { basisText, parsePieces, showPrice, showValue } from "./reviewValues";
 
@@ -417,7 +418,7 @@ function Review({ proposal }: { proposal: Proposal }) {
             <div
               className={`flex h-30 items-center justify-center rounded-md bg-neutral-100 text-sm dark:bg-neutral-800 ${muted}`}
             >
-              No photo
+              {currentMain ? "No new photo" : "No photo"}
             </div>
           )}
           {proposal.capture?.source_url ? (
@@ -510,6 +511,27 @@ function Review({ proposal }: { proposal: Proposal }) {
               </p>
             ) : null}
           </fieldset>
+
+          {match?.startsWith("update:") && targetProduct.data && !reading ? (
+            <WhatsNew
+              changes={fieldChanges(
+                REVIEWED.filter(([name]) => name !== "title").map(([name]) => [
+                  name,
+                  fields[name]?.value,
+                ]),
+                (name) =>
+                  name === "gtin" ? (targetProduct.data.barcode ?? undefined) : current(name),
+              )}
+              labels={Object.fromEntries(REVIEWED)}
+              headingClass={reviewHeading}
+              photos={productPhotos.length}
+              price={
+                proposal.price && vendor && vendor.locations.length > 0
+                  ? `${showPrice(proposal.price)} at ${vendor.name}`
+                  : null
+              }
+            />
+          ) : null}
 
           <section aria-labelledby={`${id}-summary`}>
             <h2 id={`${id}-summary`} className={reviewHeading}>
