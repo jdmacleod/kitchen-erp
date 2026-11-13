@@ -44,6 +44,8 @@ import {
 } from "../../lib/decimal";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import {
+  breakdown,
+  commitGapWords,
   purchasedItems,
   runningTotals,
   totalHidingGap,
@@ -77,7 +79,7 @@ import { ProductPicker } from "./ProductPicker";
 import { imageColumns, ReceiptZoom } from "./ReceiptZoom";
 import { RememberCode } from "./RememberCode";
 import { RemovedLinesCaption } from "./RemovePurchase";
-import { RereadLines } from "./RereadLines";
+import { PartialLines, RereadLines } from "./RereadLines";
 import { LineActions } from "./ReviewLineActions";
 import { UnreadRows } from "./UnreadRows";
 import { WhyOff } from "./WhyOff";
@@ -465,6 +467,9 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     }
   };
   const totalMissing = purchase.flags.includes("total_missing");
+  // Committing lines that miss the receipt's total, or a receipt read only in part,
+  // asks first: the prices it records would be missing lines.
+  const gapWords = commitGapWords(purchase, mismatch, linesPartial || rowsNotRead);
   // The image transcriber was set up but could not read this receipt (04, 2O):
   // information, not a warning, and gone once the purchase is committed.
   const readFromTextScan =
@@ -545,12 +550,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
           </Button>
         </Alert>
       ) : null}
-      {linesPartial ? (
-        <Alert tone="info">
-          Part of this receipt could not be read, so some of its lines are missing. Compare the
-          lines with the receipt image and add the ones that are not here.
-        </Alert>
-      ) : null}
+      {linesPartial ? <PartialLines purchase={purchase} disabled={busy} /> : null}
       {rowsNotRead && !linesPartial ? (
         <UnreadRows
           purchase={purchase}
@@ -728,6 +728,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         <h2 id="commit-dialog-title" className={sectionHeading}>
           Commit this purchase?
         </h2>
+        {gapWords ? (
+          <Alert tone="warn" className="mt-2">
+            {gapWords} Commit anyway, or go back and find the missing lines first.
+          </Alert>
+        ) : null}
         <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
           {emitting} {emitting === 1 ? "line emits" : "lines emit"} a price observation now.
           {unresolved > 0
@@ -748,7 +753,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
               })
             }
           >
-            {commit.isPending ? "Committing…" : "Commit"}
+            {commit.isPending ? "Committing…" : gapWords ? "Commit anyway" : "Commit"}
           </Button>
           <Button variant="secondary" onClick={() => setConfirming(false)}>
             Cancel
@@ -820,8 +825,7 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className={sectionHeading}>Header</h2>
         <span className={hintClass}>
-          Lines add up to{" "}
-          {purchase.computed_total !== null ? formatMoney(purchase.computed_total) : "—"}
+          Lines add up to {formatMoney(breakdown(purchase).linesTotal)}
         </span>
       </div>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}

@@ -42,6 +42,31 @@ export function showValue(field: string, value: unknown): string {
   return String(value);
 }
 
+/** A field an update would change: what the product has and what was found. */
+export interface FieldChange {
+  name: string;
+  from: string;
+  to: string;
+  /** The person chose or typed it, so Accept writes it over what the product has. */
+  chosen: boolean;
+}
+
+/**
+ * The fields where what was found differs from what the product has, as a person
+ * reads them: 750.0 ml and 750 ml are the same, and so is a brand in other capitals.
+ */
+export function fieldChanges(
+  fields: [string, unknown, boolean][],
+  current: (name: string) => unknown,
+): FieldChange[] {
+  return fields.flatMap(([name, found, chosen]) => {
+    if (found === undefined || found === null || found === "") return [];
+    const from = showValue(name, current(name));
+    const to = showValue(name, found);
+    return from.toLowerCase() === to.toLowerCase() ? [] : [{ name, from, to, chosen }];
+  });
+}
+
 /** "5 links" or "5" as pieces; the name singular, as the product stores it. */
 export function parsePieces(text: string): { count: string; name?: string } | null {
   const m = /^(\d{1,5})(?:\s+([A-Za-z][A-Za-z -]{0,31}))?$/.exec(text.trim());

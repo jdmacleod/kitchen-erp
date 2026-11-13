@@ -93,6 +93,32 @@ function inPrice(patch: HintProps["patch"], line: PurchaseLine) {
   return () => patch.mutateAsync({ lineId: line.id, in_price: true });
 }
 
+/** A donation read as money off, turned into one the shopper paid. */
+function DonationHint({
+  line,
+  amount,
+  busy,
+  run,
+  patch,
+}: Pick<HintProps, "busy" | "run" | "patch"> & { line: PurchaseLine; amount: string }) {
+  return (
+    <>
+      Line {line.seq} reads as a donation ({formatMoney(amount)}) but counts as money off. A
+      donation added at the till is paid, not saved.
+      <Button
+        variant="secondary"
+        className={`mt-2 block ${small}`}
+        disabled={busy}
+        onClick={() =>
+          run([() => patch.mutateAsync({ lineId: line.id, line_kind: "fee", clear_parent: true })])
+        }
+      >
+        It&apos;s a donation I paid
+      </Button>
+    </>
+  );
+}
+
 function HintRow({ hint, lines, busy, run, patch, merge, onShowLine }: HintProps) {
   switch (hint.kind) {
     case "savings_in_price":
@@ -171,6 +197,10 @@ function HintRow({ hint, lines, busy, run, patch, merge, onShowLine }: HintProps
             })}
           </span>
         </>
+      );
+    case "donation_paid":
+      return (
+        <DonationHint line={hint.line} amount={hint.amount} busy={busy} run={run} patch={patch} />
       );
     case "line_is_gap":
       return hint.line.line_kind === "discount" ? (
