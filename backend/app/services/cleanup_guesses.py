@@ -19,12 +19,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import categories, names, standard_match, usda_fit
 from app.models import CleanupGuess, FdcRelease
+from app.models.catalog import FdcFood
 from app.services import ingredient_category, usda
 
 GuessKind = Literal["category", "usda_link"]
@@ -110,4 +111,31 @@ async def _search(db: AsyncSession, kind: GuessKind, name: str) -> Kept:
         return Kept(await ingredient_category.from_usda(db, name), None)
     found = await usda.candidates(db, name, limit=5, fit_name=name)
     better = next((f for f in found if usda_fit.fits(name, f.description).verdict == "fits"), None)
+    if better is None:
+        found = await _food_first(db, name)
+        better = next(
+            (f for f in found if usda_fit.fits(name, f.description).verdict == "fits"), None
+        )
     return Kept(None, better.fdc_id if better else None)
+
+
+async def _food_first(db: AsyncSession, name: str) -> list[FdcFood]:
+    """Foods named as USDA names them, the food first and the cut or part after:
+    "yak leg" finds "Yak, leg, shank half, …, raw", whose long description the
+    trigram search ranks too low to see. Raw or dry records first."""
+    words = names.normalize_name(name).split()
+    if len(words) < 2:
+        return []
+    lowered = func.lower(FdcFood.description)
+    raw = or_(*(lowered.contains(w) for w in usda.RAW_WORDS))
+    stmt = (
+        select(FdcFood)
+        .where(
+            FdcFood.data_type.in_(("foundation_food", "sr_legacy_food")),
+            lowered.startswith(f"{words[0]},"),
+            *(lowered.contains(w) for w in words[1:]),
+        )
+        .order_by(case((raw, 0), else_=1), FdcFood.fndds_uses.desc(), FdcFood.fdc_id)
+        .limit(10)
+    )
+    return list((await db.execute(stmt)).scalars())
