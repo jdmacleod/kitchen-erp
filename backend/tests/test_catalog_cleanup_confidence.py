@@ -145,3 +145,34 @@ async def test_the_usda_guesses_are_kept_until_the_catalog_version_changes(
 def test_the_guess_migration_applies_and_reverses():
     run_alembic("downgrade", "0059")
     run_alembic("upgrade", "head")
+
+
+async def test_a_relink_finds_a_food_named_food_first(admin_client, db_session, owner_conn):
+    """A two-word name finds the food USDA names food first ("Yak, leg, …, raw"),
+    whose long description the trigram search ranks too low, instead of unlinking."""
+    await seed_units_via_service(db_session)
+    await _foods(owner_conn)
+    await owner_conn.executemany(
+        "INSERT INTO fdc_food (fdc_id, data_type, description, category) VALUES ($1, $2, $3, $4)",
+        [
+            (900071, "sr_legacy_food", "Yak, ground, raw", "Lamb, Veal, and Game Products"),
+            (
+                900072,
+                "sr_legacy_food",
+                'Yak, leg, shank half, separable lean only, trimmed to 1/4" fat, '
+                "choice, cooked, roasted",
+                "Lamb, Veal, and Game Products",
+            ),
+            (
+                900073,
+                "sr_legacy_food",
+                'Yak, leg, shank half, separable lean only, trimmed to 1/4" fat, choice, raw',
+                "Lamb, Veal, and Game Products",
+            ),
+        ],
+    )
+    leg = await make_ingredient(admin_client, "yak leg")
+    await _link(owner_conn, leg, 900071)
+    [s] = by_kind(await suggestions(admin_client), "usda_link")
+    assert s["before"] == "Yak, ground, raw"
+    assert s["after"].startswith("Yak, leg, shank half") and s["after"].endswith("raw")

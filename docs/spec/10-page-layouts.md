@@ -685,7 +685,7 @@ Each row shows the subject (linked), before → after, and why, with **Accept** 
 **Sure and guessed (issue 372).** Every suggestion has a `confidence`, `sure` or `guess`:
 
 - A category is sure when the name settles it (`name`), the standard list files it (`standard`) or a store page did (`clip`). One taken from the household's ingredients with the same head noun (`catalog`) or from a USDA food group (`usda`) is a guess.
-- A USDA relink is sure when the new record is a Foundation food that is raw or dry; any other relink is a guess. Unlinking is sure when the linked record names another food, and a guess when it names this food in another form.
+- A USDA relink is sure when the new record is a Foundation food that is raw or dry; any other relink is a guess. Unlinking is sure when the linked record names another food, and a guess when it names this food in another form. The search for a food to relink to also looks for the record USDA names food first ("yak leg" → "Yak, leg, …, raw"), raw or dry records first, before offering to unlink (amended 2026-11-12).
 - Ingredient names, merges, product names and brands come from rules and are sure.
 
 **Accept these N** counts and applies only the sure rows, and rows whose category the person chose. A guess row carries a squash "Check this" badge and is accepted on its own, after a glance or a pick. The server enforces the same rule: `POST /catalog/cleanup/apply` with more than one key applies no guess without a chosen value and returns its key in `held`.
