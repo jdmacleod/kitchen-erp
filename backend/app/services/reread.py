@@ -56,7 +56,7 @@ from app.models import (
 )
 from app.models.geo import VendorLocation
 from app.models.purchases import REREAD_OPEN
-from app.services import recipe_cost_triggers
+from app.services import recipe_cost_triggers, reread_transcribed
 from app.services.purchases import ensure_not_voided, get_purchase
 from app.services.review import ReadRow, apply_rows
 
@@ -219,6 +219,7 @@ async def state(db: AsyncSession, purchase: Purchase) -> dict[str, Any] | None:
     return {
         "can_recheck": bool(kept),
         "open": None if found is None else {"id": found.id, "status": found.status},
+        "last_transcribe": await reread_transcribed.last_transcribe(db, purchase.id),
     }
 
 
