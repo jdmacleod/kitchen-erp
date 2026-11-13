@@ -55,7 +55,9 @@ LINE_READING_FLAGS = frozenset(
 #    A donation added at the till and read as a discount is a fee (donation_paid).
 # 5: a "free" row read as an item is a saving when it is the one the printed
 #    savings total lacks (free_item_coupon).
-LINE_RULES_VERSION = 5
+# 6: a points row printed at 0.00 ("CLUB POINTS 0.00") is points_not_money, as a
+#    points count read as an amount already was, so it never waits to be identified.
+LINE_RULES_VERSION = 6
 
 
 @dataclass
