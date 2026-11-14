@@ -13,7 +13,7 @@ import {
   focusRing,
   secondaryLinkClass,
 } from "../../components/ui";
-import { formatMoney, stripZeros } from "../../lib/decimal";
+import { moneyForQty } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -77,18 +77,32 @@ function ChangeRow({ change }: { change: PriceChange }) {
           to={`/catalog/products/${change.product_id}`}
           className={`rounded-sm font-medium underline ${focusRing}`}
         >
-          {change.product_name}
+          {change.product_brand
+            ? `${change.product_brand} ${change.product_name}`
+            : change.product_name}
         </Link>
         <span className="tabular-nums">
-          {formatMoney(change.amount)} / {stripZeros(change.qty)} {change.unit}{" "}
+          {moneyForQty(change.amount, change.qty, change.unit)}{" "}
           {change.is_promo ? <Badge tone="good">on sale</Badge> : null}
+          {change.was_amount && change.was_qty && change.was_unit ? (
+            <span className={`block text-right text-xs ${muted}`}>
+              was {moneyForQty(change.was_amount, change.was_qty, change.was_unit)}
+            </span>
+          ) : null}
         </span>
       </div>
       <p className={muted}>
         {change.vendor_name} · seen{" "}
-        <time dateTime={change.seen_at}>{formatDateTime(change.seen_at)}</time>
+        <time dateTime={change.seen_at}>{formatDateTime(change.seen_at)}</time> ·{" "}
+        <a
+          href={change.canonical_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`rounded-sm text-blue-700 underline dark:text-blue-300 ${focusRing}`}
+        >
+          store page
+        </a>
       </p>
-      <p className={`break-all text-xs ${muted}`}>{change.canonical_url}</p>
       {needsStore ? (
         <label className="flex flex-col gap-1">
           At which {change.vendor_name} store?

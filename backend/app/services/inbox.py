@@ -63,6 +63,7 @@ from app.services import (
     identify_queue,
     ingredient_duplicates,
     lookups,
+    posted_price_changes,
     pricebook,
     product_duplicates,
     proposals,
@@ -556,7 +557,7 @@ async def _catalog_cleanup(db: AsyncSession) -> list[InboxItem]:
 
 
 async def _posted_prices(db: AsyncSession) -> list[InboxItem]:
-    changes = await lookups.pending_price_changes(db)
+    changes = await posted_price_changes.pending(db)
     if not changes:
         return []
     n = len(changes)

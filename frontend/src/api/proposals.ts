@@ -384,9 +384,14 @@ export interface PriceChange {
   canonical_url: string;
   product_id: string;
   product_name: string;
+  product_brand: string | null;
   vendor_id: string;
   vendor_name: string;
   created_at: string;
+  /** The listing's latest posted price, when one was recorded. */
+  was_amount: string | null;
+  was_qty: string | null;
+  was_unit: string | null;
 }
 
 const priceChangesKey = ["listing-price-changes"] as const;

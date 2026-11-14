@@ -29,7 +29,7 @@ from app.schemas.lookups import (
     ProductPageLookUp,
 )
 from app.schemas.product_photos import ProductPhotoOut
-from app.services import flyers, lookups
+from app.services import flyers, lookups, posted_price_changes
 
 router = APIRouter(tags=["products helper"])
 
@@ -127,7 +127,7 @@ async def look_up_product_page(
 
 @router.get("/listing-price-changes", response_model=PriceChangeList)
 async def price_changes(_: CurrentUser, db: DbSession) -> PriceChangeList:
-    return PriceChangeList(items=await lookups.pending_price_changes(db))  # type: ignore[arg-type]
+    return PriceChangeList(items=await posted_price_changes.pending(db))  # type: ignore[arg-type]
 
 
 @router.post("/listing-price-changes/{change_id}/accept", response_model=PriceChangeDecided)

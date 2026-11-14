@@ -81,9 +81,14 @@ class PriceChangeOut(ApiModel):
     canonical_url: str
     product_id: uuid.UUID
     product_name: str
+    product_brand: str | None = None
     vendor_id: uuid.UUID
     vendor_name: str
     created_at: datetime
+    # The listing's latest posted price, when one was recorded.
+    was_amount: DecimalStr | None = None
+    was_qty: DecimalStr | None = None
+    was_unit: str | None = None
 
 
 class PriceChangeList(ApiModel):

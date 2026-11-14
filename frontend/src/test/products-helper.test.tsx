@@ -192,10 +192,47 @@ describe("posted prices", () => {
     canonical_url: "https://shop.example.test/p/oats",
     product_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9d22",
     product_name: "Rolled oats tin",
+    product_brand: null,
     vendor_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9d23",
     vendor_name: "Juniper Market",
     created_at: minutesAgo(30),
+    was_amount: null,
+    was_qty: null,
+    was_unit: null,
   };
+
+  // Regression: the row gave only the new price, so Accept was a guess; it now
+  // shows the brand, the price as "$3.19" and what the page posted before
+  // (found by /qa on 2026-11-14).
+  it("shows a change beside what the page posted before", async () => {
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /listing-price-changes": () =>
+        jsonResponse(200, {
+          items: [
+            {
+              ...change,
+              product_brand: "Fellside",
+              was_amount: "2.8900",
+              was_qty: "1",
+              was_unit: "each",
+            },
+          ],
+        }),
+    });
+    renderApp("/catalog/products/posted-prices");
+    const list = await screen.findByRole("list", { name: "Posted prices" });
+    expect(
+      within(list).getByRole("link", { name: "Fellside Rolled oats tin" }),
+    ).toBeInTheDocument();
+    expect(within(list).getByText("$3.19", { exact: false })).not.toHaveTextContent("/ 1 each");
+    expect(within(list).getByText("was $2.89")).toBeInTheDocument();
+    expect(within(list).getByRole("link", { name: "store page" })).toHaveAttribute(
+      "href",
+      "https://shop.example.test/p/oats",
+    );
+  });
 
   it("records a posted price only when a person accepts it, asking the store when needed", async () => {
     let attempts = 0;

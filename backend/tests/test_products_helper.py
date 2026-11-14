@@ -309,6 +309,13 @@ async def test_refreshed_posted_prices_wait_for_a_person(
     rejected = {"listing_id": str(listing_id), "amount": 2.99, "is_promo": True, "seen_at": later}
     assert await report_again(accepted) == 0  # the posted price, unchanged
     assert await report_again({**accepted, "amount": 3.29}) == 1
+    # Regression: a change is shown beside what the page posted before (/qa 2026-11-14).
+    [waiting] = (await admin_client.get("/api/v1/listing-price-changes")).json()["items"]
+    assert (waiting["amount"], waiting["was_amount"], waiting["was_unit"]) == (
+        "3.2900",
+        "3.1900",
+        "each",
+    )
     assert await report_again({**accepted, "amount": 3.29}) == 0  # already waiting
     assert await report_again(rejected) == 1  # differs from the latest change (3.29)
     assert await report_again(rejected) == 0
