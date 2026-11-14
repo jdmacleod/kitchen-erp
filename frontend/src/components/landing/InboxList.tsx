@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import type { InboxItem, InboxKind } from "../../api/inbox";
@@ -47,6 +47,7 @@ const PHONE_ROWS = 3;
 function Row({ item, phoneHidden }: { item: InboxItem; phoneHidden: boolean }) {
   const kind = kinds[item.kind] ?? { label: item.kind, tone: "neutral" as const };
   const error = item.error_code ? ingestErrorText(item.error_code).message : null;
+  const titleId = useId();
   return (
     <li
       data-testid="inbox-item"
@@ -59,7 +60,7 @@ function Row({ item, phoneHidden }: { item: InboxItem; phoneHidden: boolean }) {
       </span>
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-x-2 font-medium">
-          {item.title}
+          <span id={titleId}>{item.title}</span>
           {/* A receipt's reading, before it is opened (issue 122). */}
           {item.kind === "receipt" ? <TrustBadge trust={item.trust} gap={item.gap} /> : null}
         </span>
@@ -68,7 +69,11 @@ function Row({ item, phoneHidden }: { item: InboxItem; phoneHidden: boolean }) {
           {item.detail}
         </span>
       </span>
-      <Link to={item.action_route} className={`${secondaryLinkClass} col-span-2 sm:col-span-1`}>
+      <Link
+        to={item.action_route}
+        aria-describedby={titleId}
+        className={`${secondaryLinkClass} col-span-2 sm:col-span-1`}
+      >
         {item.action_label}
       </Link>
     </li>

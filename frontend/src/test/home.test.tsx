@@ -195,6 +195,11 @@ describe("home page, set up", () => {
       "href",
       "/shop/purchases/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8001",
     );
+    // Regression: every row's link read just "Review" to a screen reader; each is
+    // now described by its row's title (found by /qa on 2026-11-14).
+    expect(within(rows[0]).getByRole("link", { name: "Review" })).toHaveAccessibleDescription(
+      "Finish the Sep 24 receipt",
+    );
     // An aggregate row carries its size in its title (G6).
     expect(rows[1]).toHaveTextContent("23 receipt lines to identify");
     expect(within(rows[1]).getByRole("link", { name: "Review lines" })).toHaveAttribute(
