@@ -912,7 +912,7 @@ async def test_an_amount_the_scan_never_prints_is_flagged_and_holds_the_draft(
     assert (body["trust"], body["held"]) == ("check_lines", held)
     items = (await admin_client.get("/api/v1/inbox")).json()["items"]
     assert [i["kind"] for i in items] == ["receipt_held"]
-    assert "receipt says 24.41" in items[0]["detail"]
+    assert "receipt says $24.41" in items[0]["detail"]
 
 
 async def test_a_receipt_that_adds_up_carries_no_scan_flags_and_is_trusted(
