@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
+import { trimDecimal } from "../../api/catalog";
 import { errorMessage, isApiError } from "../../api/client";
 import {
   useUsdaDecision,
@@ -173,7 +174,7 @@ function GroupRow({ group }: { group: UsdaReviewGroup }) {
                 onChange={() => setDensity(d.portion_id)}
                 className={focusRing}
               />
-              {d.portion_label} = {d.gram_weight} g → {d.density_g_per_ml} g/ml
+              {d.portion_label} = {trimDecimal(d.gram_weight)} g → {d.density_g_per_ml} g/ml
             </label>
           ))}
           {group.density_spread_pct !== null ? (
