@@ -44,6 +44,9 @@ log = get_logger(__name__)
 # "2KG", "12CT", "1.5L" in one token, or "16" then "OZ" in two.
 _JOINED = re.compile(r"(\d+(?:\.\d+)?)([A-Z]+)")
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")
+# Some tills print the barcode joined to the last word ("SEEDS-5012345678900")
+# and the count bought as "1 PC /PC" after it: neither is part of a name or a size.
+_JOINED_CODE = re.compile(r"(.*?)-?\d{8,14}")
 
 
 @dataclass(frozen=True)
@@ -58,6 +61,7 @@ def read_pack(words: list[str]) -> tuple[Pack | None, list[str]]:
     Only a size the unit table knows counts: "6RL" (rolls) and "5.3Z" stay in the
     name, and no pack is read from them. A bare number ("EGGS 12") is not a size.
     """
+    words = _till_codes_removed(words)
     for i, word in enumerate(words):
         joined = _JOINED.fullmatch(word)
         if joined:
@@ -77,6 +81,24 @@ def read_pack(words: list[str]) -> tuple[Pack | None, list[str]]:
             continue
         return Pack(qty, unit), words[:i] + words[i + width :]
     return None, words
+
+
+def _till_codes_removed(words: list[str]) -> list[str]:
+    out: list[str] = []
+    for printed in words:
+        code = _JOINED_CODE.fullmatch(printed)
+        word = code.group(1) if code else printed
+        if (
+            word.startswith("/")
+            and len(out) >= 2
+            and out[-1] == word[1:]
+            and _NUMBER.fullmatch(out[-2])
+        ):
+            del out[-2:]  # "2 PC /PC": the count bought, then the per-piece mark
+            continue
+        if word:
+            out.append(word)
+    return out
 
 
 def name_from_words(words: list[str]) -> str:
