@@ -41,7 +41,8 @@ describe("receipt review counts", () => {
     // Three item lines besides the discount; only the unmatched one needs a product.
     expect(screen.getByText("4 items · 1 to identify")).toBeInTheDocument();
     expect(
-      screen.getByText("1 unidentified line will go to the to-identify queue."),
+      // The Commit bar leads with any gap to the total, then the count.
+      screen.getByText("1 unidentified line will go to the to-identify queue.", { exact: false }),
     ).toBeInTheDocument();
   });
 
