@@ -12853,6 +12853,17 @@
             "title": "Listing Id",
             "type": "string"
           },
+          "product_brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Brand"
+          },
           "product_id": {
             "format": "uuid",
             "title": "Product Id",
@@ -12887,6 +12898,39 @@
           "vendor_name": {
             "title": "Vendor Name",
             "type": "string"
+          },
+          "was_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Was Amount"
+          },
+          "was_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Was Qty"
+          },
+          "was_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Was Unit"
           }
         },
         "required": [
