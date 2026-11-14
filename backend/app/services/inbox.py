@@ -197,8 +197,8 @@ async def _receipts(db: AsyncSession) -> list[InboxItem]:
                     title=f"The {_which('receipt', r['store'], _day(r['purchased_at']))} "
                     "needs a careful look",
                     detail=(
-                        f"Its lines add up to {check.lines_total:.2f}, but the receipt says "
-                        f"{r['total']:.2f}. The flagged lines are shown first."
+                        f"Its lines add up to ${check.lines_total:.2f}, but the receipt says "
+                        f"${r['total']:.2f}. The flagged lines are shown first."
                     ),
                     action_label="Review",
                     action_route=f"/shop/purchases/{r['id']}",

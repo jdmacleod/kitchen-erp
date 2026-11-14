@@ -46,7 +46,7 @@ function mount(path: string, purchase: Purchase) {
             kind: "receipt_held",
             title: "The Sep 20 receipt needs a careful look",
             detail:
-              "Its lines add up to 38.20, but the receipt says 12.00. The flagged lines are shown first.",
+              "Its lines add up to $38.20, but the receipt says $12.00. The flagged lines are shown first.",
             action_label: "Review",
             action_route: `/shop/purchases/${receiptPurchaseId}`,
             created_at: "2026-09-20T18:06:00Z",
