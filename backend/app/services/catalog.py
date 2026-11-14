@@ -1266,6 +1266,8 @@ _SEARCH_SQL = """
              GREATEST(word_similarity(:ql, lower(p.name)),
                       word_similarity(:ql, lower(coalesce(p.brand, ''))),
                       word_similarity(:ql, lower(i.name))) DESC,
+             -- A product of the ingredient asked for before others named for it.
+             (lower(i.name) = :ql) DESC,
              (lower(p.name) LIKE :prefix) DESC,
              p.name
     LIMIT :limit
