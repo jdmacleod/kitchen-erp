@@ -844,26 +844,6 @@ async def _already_known(db: AsyncSession, listing_id: uuid.UUID, price: Any) ->
     return any((r.amount, r.qty, r.unit, r.is_promo) == reported for r in rows)
 
 
-async def pending_price_changes(db: AsyncSession) -> list[dict[str, Any]]:
-    rows = await db.execute(
-        text(
-            """
-            SELECT c.id, c.amount, c.qty, c.unit, c.is_promo, c.seen_at, c.created_at,
-                   l.id AS listing_id, l.title, l.canonical_url,
-                   p.id AS product_id, p.name AS product_name,
-                   v.id AS vendor_id, v.name AS vendor_name
-            FROM listing_price_change c
-            JOIN vendor_listing l ON l.id = c.listing_id
-            JOIN product p ON p.id = l.product_id
-            JOIN vendor v ON v.id = l.vendor_id
-            WHERE c.status = 'pending'
-            ORDER BY c.created_at, c.id
-            """
-        )
-    )
-    return [dict(r) for r in rows.mappings()]
-
-
 async def _suggested_location(db: AsyncSession, vendor_id: uuid.UUID) -> uuid.UUID | None:
     return (
         await db.execute(

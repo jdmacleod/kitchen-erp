@@ -183,7 +183,7 @@ describe("USDA suggestions: what starts chosen (#359)", () => {
         {
           portion_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b11",
           portion_label: "1 tbsp",
-          gram_weight: "17",
+          gram_weight: "17.0",
           density_g_per_ml: "1.15",
           suggested: false,
         },
@@ -216,6 +216,11 @@ describe("USDA suggestions: what starts chosen (#359)", () => {
     renderApp("/catalog/bridges");
     const group = await screen.findByTestId("usda-group");
     expect(within(group).getByRole("radio", { name: "1 cup = 279 g → 1.18 g/ml" })).toBeChecked();
+    // Regression: USDA's "17.0 g" read with a stray ".0" beside "25 g" measures
+    // (found by /qa on 2026-11-14).
+    expect(
+      within(group).getByRole("radio", { name: "1 tbsp = 17 g → 1.15 g/ml" }),
+    ).not.toBeChecked();
     expect(within(group).getByRole("radio", { name: "None" })).not.toBeChecked();
     expect(within(group).getByText(/These portions differ by 5%/)).toBeInTheDocument();
     expect(

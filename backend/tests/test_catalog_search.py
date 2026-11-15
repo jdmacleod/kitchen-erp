@@ -59,6 +59,24 @@ async def test_search_ranks_barcode_first_and_matches_all_fields(
     assert isinstance(hits[0]["score"], str)
 
 
+async def test_a_product_of_the_ingredient_searched_for_comes_before_namesakes(
+    admin_client: httpx.AsyncClient, db_session
+):
+    # Regression: an ingredient's name listed other foods named for it before the
+    # ingredient's own products (found by /qa on 2026-11-14). The words are invented.
+    await seed_units_via_service(db_session)
+    oat_milk = await make_ingredient(admin_client, "oat milk")
+    custard = await make_ingredient(admin_client, "custard")
+    await make_product(admin_client, custard["id"], "Oat milk custard pots")
+    carton = await make_product(admin_client, oat_milk["id"], "Fellside oat milk carton")
+
+    hits = (await admin_client.get("/api/v1/products/search", params={"q": "oat milk"})).json()[
+        "items"
+    ]
+    assert [h["name"] for h in hits] == ["Fellside oat milk carton", "Oat milk custard pots"]
+    assert hits[0]["id"] == carton["id"]
+
+
 async def test_typeahead_under_100ms_with_5000_products(
     admin_client, db_session, owner_conn: asyncpg.Connection
 ):

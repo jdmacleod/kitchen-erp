@@ -46,6 +46,7 @@ import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import {
   breakdown,
   commitGapWords,
+  commitHint,
   purchasedItems,
   runningTotals,
   totalHidingGap,
@@ -444,6 +445,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const emitting = itemLines.filter((l) => !isSetAside(l)).length - unresolved;
   const mismatch = purchase.flags.some((f) => f === "reconcile_mismatch" || f === "total_mismatch");
   const suspectCount = lines.filter(suspectLine).length;
+  const whyOff = mismatch || purchase.trust === "check_lines";
   // What the reader could not find is filled with a stand-in, and a stand-in
   // looks like an answer in the header fields. Saving the header clears these.
   const dateMissing = purchase.flags.includes("purchased_at_missing");
@@ -512,20 +514,22 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         <Alert tone="warn">
           <span className="block font-medium">This receipt needs a careful look</span>
           <span className="block">
-            Lines add up to {formatMoney(purchase.lines_total ?? purchase.computed_total)}; the
-            receipt says {formatMoney(purchase.total)}.
+            {/* The sums below already give both figures and say to compare. */}
+            {whyOff
+              ? ""
+              : `Lines add up to ${formatMoney(purchase.lines_total ?? purchase.computed_total)}; the receipt says ${formatMoney(purchase.total)}.`}
             {purchase.flags.includes("total_not_in_scan")
               ? " That total is not on the scan either, so check it against the photo."
               : ""}
             {suspectCount > 0
               ? ` The ${suspectCount === 1 ? "line most likely to explain it is" : `${suspectCount} lines most likely to explain it are`} shown first.`
-              : " Compare the lines with the receipt image."}
+              : whyOff
+                ? ""
+                : " Compare the lines with the receipt image."}
           </span>
         </Alert>
       ) : null}
-      {mismatch || purchase.trust === "check_lines" ? (
-        <WhyOff purchase={purchase} onShowLine={showLine} />
-      ) : null}
+      {whyOff ? <WhyOff purchase={purchase} onShowLine={showLine} /> : null}
       {decimalSuspects.length > 0 ? (
         <Alert tone="info">
           <span className="block">
@@ -707,9 +711,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
                 ? "Save or cancel your corrections before committing."
                 : lines.length === 0
                   ? "Add the receipt's lines before committing."
-                  : unresolved > 0
-                    ? `${unresolved} unidentified ${unresolved === 1 ? "line" : "lines"} will go to the to-identify queue.`
-                    : "Every item line has a product."}
+                  : commitHint(gapWords, unresolved)}
             </span>
           </div>
         </div>

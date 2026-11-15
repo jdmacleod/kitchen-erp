@@ -300,3 +300,14 @@ export function commitGapWords(
   if (unread) return `${words} Part of the receipt was not read, so some lines are missing.`.trim();
   return words || null;
 }
+
+/** What the Commit bar says beside the button once the draft has lines: the gap
+ * first, since "every item line has a product" read as all clear on a receipt
+ * that was still short of its total. */
+export function commitHint(gapWords: string | null, unresolved: number): string {
+  const queued =
+    unresolved > 0
+      ? `${unresolved} unidentified ${unresolved === 1 ? "line" : "lines"} will go to the to-identify queue.`
+      : null;
+  return [gapWords, queued].filter(Boolean).join(" ") || "Every item line has a product.";
+}

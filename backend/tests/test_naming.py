@@ -25,6 +25,10 @@ from tests.resolution_helpers import make_receipt_purchase
         ("GRK YOGURT PLN 5.3Z", None, "Grk yogurt pln 5.3z"),
         ("EGGS 12", None, "Eggs 12"),  # a bare number is not a size
         ("WT BROCCOLI CROWNS", None, "Wt broccoli crowns"),
+        # Regression (/qa 2026-11-14): a till that prints the barcode and the count
+        # bought inside the wording gave "… 100 gm-5012345678900 /pc", 1 each.
+        ("FENNEL SEEDS 100 GM-5012345678900 1 PC /PC", ("100", "g"), "Fennel seeds"),
+        ("ROSE WATER-5012345678900 2 PC /PC", None, "Rose water"),
     ],
 )
 def test_the_wording_gives_a_name_and_a_pack(norm, pack, name):

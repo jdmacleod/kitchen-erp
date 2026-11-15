@@ -369,7 +369,7 @@ async def test_a_draft_far_off_its_total_is_held_for_a_careful_look(admin_client
     assert item["title"].startswith("The Tideline Market receipt from ")
     assert item["title"].endswith(" needs a careful look")
     assert item["detail"] == (
-        "Its lines add up to 3.59, but the receipt says 1.20. The flagged lines are shown first."
+        "Its lines add up to $3.59, but the receipt says $1.20. The flagged lines are shown first."
     )
     assert item["action_route"] == f"/shop/purchases/{pid}"
 

@@ -46,7 +46,7 @@ function mount(path: string, purchase: Purchase) {
             kind: "receipt_held",
             title: "The Sep 20 receipt needs a careful look",
             detail:
-              "Its lines add up to 38.20, but the receipt says 12.00. The flagged lines are shown first.",
+              "Its lines add up to $38.20, but the receipt says $12.00. The flagged lines are shown first.",
             action_label: "Review",
             action_route: `/shop/purchases/${receiptPurchaseId}`,
             created_at: "2026-09-20T18:06:00Z",
@@ -64,10 +64,13 @@ describe("a receipt held for a careful look", () => {
     await screen.findByTestId("review");
     expect(screen.getByText("This receipt needs a careful look")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /Lines add up to \$38\.20; the receipt says \$12\.00\. The line most likely to explain it is shown first\./,
-      ),
+      screen.getByText("The line most likely to explain it is shown first.", { exact: false }),
     ).toBeInTheDocument();
+    // Regression: the sums below give both figures, so the notice no longer
+    // repeats them (found by /qa on 2026-11-14).
+    expect(
+      screen.queryByText(/Lines add up to \$38\.20; the receipt says/),
+    ).not.toBeInTheDocument();
     // The ordinary mismatch line would say the same thing twice.
     expect(
       screen.queryByText(/The receipt says \$12\.00 but the lines add up to/),
@@ -102,5 +105,20 @@ describe("a receipt held for a careful look", () => {
     expect(within(heldRow).getByText("Careful look")).toBeInTheDocument();
     expect(within(heldRow).queryByText("Draft")).not.toBeInTheDocument();
     expect(within(manualRow).queryByText("Careful look")).not.toBeInTheDocument();
+  });
+});
+
+describe("the Commit bar on a draft short of its total", () => {
+  // Regression: the bar said "Every item line has a product." beside a draft
+  // still short of its printed total (found by /qa on 2026-11-14).
+  it("names the gap rather than reading as all clear", async () => {
+    mount(`/purchases/${receiptPurchaseId}`, { ...held, flags: ["total_mismatch"] });
+    await screen.findByTestId("review");
+    expect(
+      screen.getByText(/The lines are \$\d+\.\d{2} (short of|over) the receipt's total\./, {
+        selector: "span",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Every item line has a product.")).not.toBeInTheDocument();
   });
 });
