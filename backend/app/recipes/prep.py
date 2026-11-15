@@ -12,6 +12,7 @@ up and proposes.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from functools import cache
 from importlib import resources
@@ -87,3 +88,45 @@ def strip_prep(name_norm: str) -> Stripped | None:
     if not words:
         return None
     return Stripped(remainder=" ".join(kept), words=words)
+
+
+@cache
+def describing_words() -> frozenset[str]:
+    """Words that say which kind of a food, never which food (#516)."""
+    return _words("describing_words.txt")
+
+
+_FOOD_WORD = re.compile(r"[a-z0-9]+")
+# A part or shape, not a food: "fellwort leaf" shares nothing with "lantern leaves".
+_PARTS = frozenset({"leaf", "leaves", "green", "greens", "root", "stem", "stalk", "piece"})
+
+
+def _singulars(word: str) -> set[str]:
+    """Readings of a plural ("leaves" → leaf, "berries" → berry); a word itself first."""
+    out = {word}
+    if word.endswith("ies"):
+        out.add(word[:-3] + "y")
+    if word.endswith("ves"):
+        out.add(word[:-3] + "f")
+    if word.endswith("es"):
+        out.add(word[:-2])
+    if word.endswith("s") and not word.endswith("ss"):
+        out.add(word[:-1])
+    return out
+
+
+def _food_words(text: str | None) -> set[str]:
+    skip = describing_words() | prep_words() | _PARTS | _JOINERS
+    out: set[str] = set()
+    for word in _FOOD_WORD.findall((text or "").casefold()):
+        if word not in skip:
+            out |= _singulars(word)
+    return out - skip
+
+
+def shares_food_word(name: str, *others: str | None) -> bool:
+    """Whether any of ``others`` shares a word naming a food with ``name`` (#516):
+    "torn basil" and "Thai basil" do, "golden syrup glaze" and "golden beets"
+    don't, so a proposal that matched only a describing word is never offered."""
+    mine = _food_words(name)
+    return any(mine & _food_words(o) for o in others if o)

@@ -20,3 +20,9 @@ it (hyphens inside a word stay). Blank lines and lines starting with `#` are
 ignored. Only the first and last words of a name are ever stripped, one at a
 time, and a name is never stripped to nothing: "minced" alone offers nothing.
 Stripping never resolves a line on its own (VC3); it only proposes.
+
+- `describing_words.txt`: words that say which kind of a food, never which food
+  (a colour, a size, "fresh", "style"). A similar or USDA proposal is offered
+  only when it shares a word with the recipe name that is none of these, no
+  prep word and no part word ("leaves", "greens"); "golden syrup glaze" is
+  not offered golden beets (#516).

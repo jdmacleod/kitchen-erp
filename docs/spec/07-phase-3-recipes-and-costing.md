@@ -520,7 +520,12 @@ VS2 and VC6 entries carry that review's rulings.
   running application still never writes to the mount.
 - **Close matches never apply themselves (VC3).** Trigram matches, however
   close, are suggestions in the `recipe` inbox kind; only an exact name or
-  spelling resolves a line without a person.
+  spelling resolves a line without a person. A similar or USDA suggestion is
+  offered only when it shares a word naming a food with the recipe name: a
+  shared colour, size, freshness or style word (`describing_words.txt`), prep
+  word or part word ("leaves") is not enough, so "golden syrup glaze" is not
+  offered golden beets. A name left with no suggestion shows only "Ask the
+  model" and the search (amended 2026-11-14, #516).
 - **The matching cascade (VS2; Phase 3 review, 2026-10-09).** 3C looks a name
   up in this order: an exact name or spelling; an inflection (1G's
   `singulars`); an exact standard-list entry (`standard_match.match_entry`);
