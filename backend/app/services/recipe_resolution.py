@@ -58,7 +58,7 @@ from app.models import (
     RecipePin,
 )
 from app.models.catalog import FdcFood
-from app.recipes.prep import strip_prep
+from app.recipes.prep import shares_food_word, strip_prep
 from app.schemas.catalog import IngredientCreate, IngredientSummary
 from app.schemas.recipes import (
     RecipePinOut,
@@ -261,7 +261,7 @@ async def _similar_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[
             matched_spelling=hit.matched_spelling,
         )
         for hit in hits
-        if hit.id is not None
+        if hit.id is not None and shares_food_word(name_norm, hit.name, hit.matched_spelling)
     ]
 
 
@@ -317,6 +317,7 @@ async def _usda_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[Res
             note=stripped.note if stripped is not None else None,
         )
         for food in foods
+        if shares_food_word(text, food.description)
     ]
 
 

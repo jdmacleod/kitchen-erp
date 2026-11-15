@@ -20,7 +20,7 @@ from app.core.db import get_sessionmaker
 from app.ingest.llm import BEGIN_DELIMITER, END_DELIMITER, RECIPE_NAMES_SYSTEM_PROMPT
 from app.models import RecipeIngredient
 from app.models.catalog import FdcFood, IngredientRef
-from app.recipes.prep import Stripped, form_words, prep_words, strip_prep
+from app.recipes.prep import Stripped, form_words, prep_words, shares_food_word, strip_prep
 from app.services import recipe_resolution
 from tests.catalog_helpers import make_ingredient
 from tests.ingest_helpers import recorded  # noqa: F401
@@ -86,6 +86,23 @@ def assert_ordered(proposals: list[dict]) -> None:
 )
 def test_strip_prep(name: str, expected: Stripped | None) -> None:
     assert strip_prep(name) == expected
+
+
+@pytest.mark.parametrize(
+    ("name", "other", "shared"),
+    [
+        ("torn basil", "Thai basil", True),
+        ("lanternfruit jam", "Lanternfruit, dried", True),  # a USDA description
+        ("baby leeks", "leek", True),
+        ("golden syrup glaze", "golden beets", False),
+        ("white lanternseed paste", "white fellwort", False),
+        ("fellwort leaves", "lantern leaves", False),
+        ("fresh lovage", "lanternfruit", False),
+    ],
+)
+def test_a_proposal_must_share_a_word_naming_a_food(name: str, other: str, shared: bool) -> None:
+    """Issue 516: describing, prep and part words alone never make a proposal."""
+    assert shares_food_word(name, other) is shared
 
 
 def test_prep_and_form_words_are_disjoint_data_files() -> None:
@@ -373,3 +390,26 @@ async def test_three_proposals_per_name_higher_tiers_first(
     assert {line["resolution"] for line in (await lines_of(admin_client, bowl["id"])).values()} == {
         "unmatched"
     }
+
+
+async def test_a_name_sharing_only_a_describing_word_is_offered_nothing_similar(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    """Issue 516: "golden syrup glaze" shares only "golden" with golden beets, so no
+    similar chip is offered; "torn lanternfruit" still meets "dried lanternfruit"."""
+    await make_ingredient(admin_client, "golden beets")
+    await make_ingredient(admin_client, "golden kiwi")
+    await make_ingredient(admin_client, "spring onion")
+    await make_ingredient(admin_client, "dried lanternfruit")
+    recipes_repo.write(
+        "glaze.cook",
+        "Brush with @golden syrup glaze{2%tbsp}, @spring greens{1%cup} and"
+        " @torn lanternfruit{1}.\n",
+    )
+    await rescan(admin_client)
+    items = {i["name_norm"]: i for i in (await queue(admin_client))["items"]}
+    for name in ("golden syrup glaze", "spring greens"):
+        assert [p for p in items[name]["proposals"] if p["tier"] == "similar"] == []
+    fruit = [p["name"] for p in items["torn lanternfruit"]["proposals"] if p["tier"] == "similar"]
+    assert fruit == ["dried lanternfruit"]

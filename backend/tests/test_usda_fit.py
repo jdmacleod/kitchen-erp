@@ -57,6 +57,8 @@ def test_another_form_of_the_food_is_doubtful(name, description):
         ("star fruit", "Carambola, (starfruit), raw"),
         ("cod", "Fish, cod, Pacific, raw (may have been previously frozen)"),
         ("dried guajillo chiles", "Peppers, hot chile, sun-dried"),
+        # Issue 517: the form it is sold in never makes a misfit.
+        ("whole anise pods", "Spices, anise seed"),
     ],
 )
 def test_a_record_that_names_the_food_fits(name, description):

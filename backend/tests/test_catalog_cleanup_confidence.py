@@ -191,3 +191,35 @@ async def test_a_relink_finds_a_food_named_food_first(admin_client, db_session, 
     [s] = by_kind(await suggestions(admin_client), "usda_link")
     assert s["before"] == "Yak, ground, raw"
     assert s["after"].startswith("Yak, leg, shank half") and s["after"].endswith("raw")
+
+
+async def test_an_unlink_is_sure_only_when_the_record_is_another_kind_of_food(
+    admin_client, db_session, owner_conn
+):
+    """Issue 517: a record in the ingredient's own category may be another name for
+    it, so unlinking it is a guess; a form word ("pods") never makes a misfit."""
+    await seed_units_via_service(db_session)
+    await owner_conn.executemany(
+        "INSERT INTO fdc_food (fdc_id, data_type, description, category) VALUES ($1, $2, $3, $4)",
+        [
+            (900081, "sr_legacy_food", "Fish, mahi mahi, raw", "Finfish and Shellfish Products"),
+            (900082, "sr_legacy_food", "Spices, anise seed", "Spices and Herbs"),
+            (900083, "sr_legacy_food", "Watermelon, raw", "Fruits and Fruit Juices"),
+        ],
+    )
+    dorado = await make_ingredient(admin_client, "dorado fillets", category="seafood")
+    anise = await make_ingredient(admin_client, "whole anise pods", category="spices")
+    stock = await make_ingredient(admin_client, "lantern stock", category="pantry")
+    unfiled = await clear_category(admin_client, await make_ingredient(admin_client, "fellwort"))
+    await _link(owner_conn, dorado, 900081)
+    await _link(owner_conn, anise, 900082)
+    await _link(owner_conn, stock, 900083)
+    await _link(owner_conn, unfiled, 900083)
+    rows = {s["subject_id"]: s for s in by_kind(await suggestions(admin_client), "usda_link")}
+    assert anise["id"] not in rows
+    assert (rows[dorado["id"]]["after"], rows[dorado["id"]]["confidence"]) == (
+        "no USDA food",
+        "guess",
+    )
+    assert rows[stock["id"]]["confidence"] == "sure"
+    assert rows[unfiled["id"]]["confidence"] == "guess"

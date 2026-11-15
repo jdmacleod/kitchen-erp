@@ -9,9 +9,10 @@ first that does, or unlinked.
 Each suggestion says how sure it is. A category settled by the name, the
 standard list or a store page is sure; one guessed from similar ingredients or
 from a USDA food group is a guess. A relink to a Foundation record that is raw or
-dry is sure; any other relink is a guess, and so is unlinking a record that names
-the food in another form. The slow searches are kept per name
-(``cleanup_guesses``).
+dry is sure; any other relink is a guess. Unlinking is sure only when the record
+is another kind of food (another category); one in the ingredient's own category
+may be its other name, and one naming the food in another form is a guess. The
+slow searches are kept per name (``cleanup_guesses``).
 """
 
 from __future__ import annotations
@@ -134,18 +135,23 @@ async def _filed_by_head(db: AsyncSession, heads: set[str]) -> defaultdict[str, 
 async def usda_links(db: AsyncSession, rows: list[Ingredient], *, guess: bool) -> list[Suggestion]:
     by_id = {i.id: i for i in rows}
     linked = await db.execute(
-        select(IngredientRef.ingredient_id, IngredientRef.external_id, FdcFood.description)
+        select(
+            IngredientRef.ingredient_id,
+            IngredientRef.external_id,
+            FdcFood.description,
+            FdcFood.category,
+        )
         .join(FdcFood, cast(FdcFood.fdc_id, Text) == IngredientRef.external_id)
         .where(IngredientRef.system == "fdc", IngredientRef.is_preferred)
     )
     misfits = []
-    for ingredient_id, fdc_id, description in linked:
+    for ingredient_id, fdc_id, description, group in linked:
         ingredient = by_id.get(ingredient_id)
         if ingredient is None:
             continue
         fit = fits(ingredient.name, description)
         if fit.verdict != "fits":
-            misfits.append((ingredient, fdc_id, description, fit))
+            misfits.append((ingredient, fdc_id, description, fit, group))
     # A count reads the kept guesses without searching, so a skip, keyed by the
     # relink it offered, holds in the count as on the page.
     kept = await cleanup_guesses.guesses(
@@ -161,15 +167,14 @@ async def usda_links(db: AsyncSession, rows: list[Ingredient], *, guess: bool) -
         else {}
     )
     out = []
-    for ingredient, fdc_id, description, fit in misfits:
+    for ingredient, fdc_id, description, fit, group in misfits:
         found = kept.get(ingredient.name)
         better = foods.get(found.fdc_id) if found and found.fdc_id is not None else None
         value = str(better.fdc_id) if better else ""
         if better is not None:
             confidence = relink_confidence(better)
         else:
-            # Unlinking a food that names another is sure; one in another form, a guess.
-            confidence = "sure" if fit.verdict == "misfit" else "guess"
+            confidence = unlink_confidence(fit.verdict, ingredient.category, group)
         out.append(
             Suggestion(
                 suggestion_key("usda_link", ingredient.id, f"{fdc_id}>{value}"),
@@ -184,6 +189,15 @@ async def usda_links(db: AsyncSession, rows: list[Ingredient], *, guess: bool) -
             )
         )
     return out
+
+
+def unlink_confidence(verdict: str, category: str | None, group: str | None) -> Confidence:
+    """Sure only for a record that never names the food and is another kind of food:
+    one in the ingredient's own category may be its other name ("dorado" for mahi
+    mahi, issue 517), and one in another form names the food. Else a guess."""
+    mine, theirs = category_keys.key(category), category_keys.key(group)
+    other_kind = mine is not None and theirs is not None and mine != theirs
+    return "sure" if verdict == "misfit" and other_kind else "guess"
 
 
 def relink_confidence(food: FdcFood) -> Confidence:

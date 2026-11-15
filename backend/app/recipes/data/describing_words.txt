@@ -1,0 +1,63 @@
+# Describing words (#516): a colour, size, age or style that says which kind of a
+# food, never which food. A "similar" or USDA proposal that shares only these
+# (and prep words) with a recipe name is not offered: "golden syrup glaze" is
+# not "golden beets". One lowercase word per line; "#" starts a comment. See
+# README.md.
+
+# colour
+white
+black
+red
+green
+yellow
+orange
+purple
+brown
+golden
+pink
+blue
+
+# size and shape
+small
+large
+medium
+baby
+mini
+jumbo
+little
+big
+thick
+thin
+long
+short
+round
+
+# age, season and freshness
+fresh
+young
+old
+new
+spring
+summer
+winter
+ripe
+
+# style and kind
+style
+plain
+mixed
+sweet
+hot
+mild
+light
+dark
+extra
+whole
+# "store-bought" reads as two words
+store
+bought
+homemade
+wild
+organic
+fermented
+salted
