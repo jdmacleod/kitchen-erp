@@ -70,7 +70,7 @@ GENERIC_HEADS = frozenset(
         "greens", "fruit", "quarters", "chops", "ribs", "steak", "steaks", "buns",
         "tenders", "rinds", "cob", "fillets", "fillet", "cutlets", "strips", "leaves",
         "sprigs", "florets", "wedges", "slices", "pieces", "bites", "meat", "hearts",
-        "roots", "root", "stems", "stalks", "tops",
+        "roots", "root", "stems", "stalks", "tops", "pods", "pod",
     }
 )  # fmt: skip
 # Parts every plant has: a record naming one ("Chicory roots") says nothing about
