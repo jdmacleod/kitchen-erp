@@ -55,3 +55,8 @@ updates:
       interval: monthly
     commit-message:
       prefix: "docker"
+    # The image's Python follows requires-python in backend/pyproject.toml.
+    # Moving to a newer Python is a deliberate change to both, not a bump.
+    ignore:
+      - dependency-name: "python"
+        versions: [">= 3.13"]

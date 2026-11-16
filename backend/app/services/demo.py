@@ -40,9 +40,7 @@ AS_OF = datetime(2026, 9, 15, 17, 30, tzinfo=UTC)
 WEEKS = 34
 
 DEMO_ADMIN_EMAIL = "demo@example.com"
-DEMO_ADMIN_PASSWORD = (
-    "demo-only-not-a-real-password"  # pii-scan: allow demo placeholder  # noqa: S105
-)
+DEMO_ADMIN_PASSWORD = "demo-only-not-a-real-password"  # pii-scan: allow demo placeholder  # noqa: S105
 DEMO_MEMBER_EMAIL = "second.cook@example.com"
 
 # The synthetic grid from SECURITY.md. Nothing real is inside it.
