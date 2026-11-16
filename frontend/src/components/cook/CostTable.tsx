@@ -597,7 +597,7 @@ function RowWords({ line }: { line: CostLine }) {
     case "unpriced":
       return (
         <span className={muted}>
-          No price yet ·{" "}
+          {line.posted_price ? "Only a posted price, not counted" : "No price yet"} ·{" "}
           <Link to="/shop/shelf-prices" className={link}>
             Log a shelf price
           </Link>

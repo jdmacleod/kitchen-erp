@@ -82,6 +82,19 @@ async def test_pack_pair_enforced_by_api_and_database(
     assert r.status_code == 422 and r.json()["error"]["code"] == "unknown_unit"
 
 
+async def test_a_product_moved_to_another_ingredient_answers_with_the_new_one(
+    admin_client, db_session
+):
+    await seed_units_via_service(db_session)
+    spirit = await make_ingredient(admin_client, "grain spirit", canonical_unit="ml")
+    style = await make_ingredient(admin_client, "wheat spirit", canonical_unit="ml")
+    p = await make_product(admin_client, spirit["id"], "Tall Grass wheat spirit")
+    r = await admin_client.patch(f"/api/v1/products/{p['id']}", json={"ingredient_id": style["id"]})
+    assert r.status_code == 200, r.text
+    assert r.json()["ingredient"]["id"] == style["id"]
+    assert r.json()["ingredient"]["name"] == "wheat spirit"
+
+
 async def test_update_clear_and_deactivate(admin_client, db_session):
     await seed_units_via_service(db_session)
     ing = await make_ingredient(admin_client, "Strawberries")

@@ -1205,6 +1205,8 @@ async def update_product(  # noqa: C901, PLR0912, PLR0915
         raise _product_conflict(exc) from exc
     if bridge_changed:
         await _after_product_bridge_change(db, product_id)
+    # The loaded ingredient is still the old one after a move; read it again.
+    db.expire(product)
     return await get_product(db, product_id)
 
 

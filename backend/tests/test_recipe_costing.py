@@ -517,6 +517,28 @@ async def test_27a_posted_uncommitted_voided_and_inactive_prices_never_cost_a_li
     assert body["stale_after_days"] == 90
 
 
+async def test_27a_a_line_with_only_a_posted_price_is_unpriced_and_says_so(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    loc = await market(admin_client)
+    bag = await make_product(admin_client, "Barley", "Barley bag", pack_qty="1", pack_unit="kg")
+    recipe = await indexed(admin_client, recipes_repo, "harbor-bowl.cook", BOWL)
+    line = lines_by_name(await cost(admin_client, recipe["id"]))["barley"]
+    assert line["status"] == "unpriced" and line["posted_price"] is False
+
+    await post_listing_price(loc, bag, "1.00")
+    await recost(recipe["id"])
+    line = lines_by_name(await cost(admin_client, recipe["id"]))["barley"]
+    # Still unpriced: a posted price never costs a line; the line only says it is there.
+    assert line["status"] == "unpriced" and line["posted_price"] is True
+
+    await shelf(admin_client, bag["id"], loc["id"], "4.00")
+    await recost(recipe["id"])
+    line = lines_by_name(await cost(admin_client, recipe["id"]))["barley"]
+    assert line["status"] == "priced" and line["posted_price"] is False
+
+
 # --- 26: truncate and recompute-costs reproduces every figure --------------------------------
 
 

@@ -411,6 +411,8 @@ class CostLineOut(ApiModel):
     packs: DecimalStr | None
     packs_high: DecimalStr | None
     usda_offer: UsdaLineOffer | None = None
+    # Unpriced, though a product of it has a posted price, which never costs a line.
+    posted_price: bool = False
 
 
 class CostTotals(ApiModel):

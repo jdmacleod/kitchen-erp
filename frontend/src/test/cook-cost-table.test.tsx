@@ -409,3 +409,23 @@ describe("the rendered recipe (10, Rendered recipe)", () => {
     expect(within(recipe).queryByRole("list", { name: "Steps" })).not.toBeInTheDocument();
   });
 });
+
+describe("an unpriced line's words (UI-7.9)", () => {
+  it("says when its only price is a posted one, which is not counted", async () => {
+    mount({
+      "GET /recipes/r-barley/cost": recomputed(() => {
+        const cost = stewCost();
+        return {
+          ...cost,
+          lines: cost.lines.map((l) =>
+            l.status === "unpriced" ? { ...l, posted_price: true } : l,
+          ),
+        };
+      }),
+    });
+    const kelp = (await costRows())[3];
+    expect(kelp).toHaveTextContent("Only a posted price, not counted ·");
+    expect(kelp).not.toHaveTextContent("No price yet");
+    expect(within(kelp).getByRole("link", { name: "Log a shelf price" })).toBeInTheDocument();
+  });
+});

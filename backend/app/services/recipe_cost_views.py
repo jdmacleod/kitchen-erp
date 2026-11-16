@@ -55,6 +55,43 @@ _PRODUCTS_SQL = """
     SELECT id AS product_id, name AS product_name, brand
     FROM product WHERE id = ANY(CAST(:ids AS uuid[]))
 """
+# The active products with a posted (listing) price normalized to their
+# ingredient's unit: such a price never costs a line (07, criterion 27a), but an
+# unpriced line says it is there, so the price seen on the product isn't a mystery.
+_POSTED_SQL = """
+    SELECT DISTINCT p.id AS product_id, p.ingredient_id
+    FROM price_observation o
+    JOIN product op ON op.id = o.product_id
+    JOIN product p ON p.id = coalesce(op.merged_into, o.product_id) AND p.active
+    JOIN ingredient i ON i.id = p.ingredient_id
+    JOIN price_norm n ON n.observation_id = o.id
+         AND n.norm_unit_price IS NOT NULL AND n.norm_unit = i.canonical_unit
+    WHERE o.source = 'listing'
+      AND p.ingredient_id = ANY(CAST(:ids AS uuid[]))
+      AND NOT EXISTS (SELECT 1 FROM price_observation_void v WHERE v.observation_id = o.id)
+"""
+
+
+async def _posted(
+    db: AsyncSession, rows: list[tuple[RecipeCostLine, RecipeIngredient]], pins: dict[str, Any]
+) -> set[uuid.UUID]:
+    """The unpriced lines whose ingredient, or pinned product, has a posted price."""
+    unpriced = [(line, ri) for line, ri in rows if line.status == "unpriced" and ri.ingredient_id]
+    if not unpriced:
+        return set()
+    ids = [str(i) for i in {ri.ingredient_id for _, ri in unpriced}]
+    found = (await db.execute(text(_POSTED_SQL), {"ids": ids})).all()
+    by_ingredient = {ingredient_id for _, ingredient_id in found}
+    products = {product_id for product_id, _ in found}
+    return {
+        line.id
+        for line, ri in unpriced
+        if (
+            pins[ri.name_norm] in products
+            if ri.name_norm in pins
+            else ri.ingredient_id in by_ingredient
+        )
+    }
 
 
 async def _used(db: AsyncSession, lines: list[RecipeCostLine]) -> dict[uuid.UUID, dict[str, Any]]:
@@ -219,6 +256,7 @@ async def cost_out(
         names = dict(found.all())
     masses = await unit_display.mass_units(db, ingredient_ids)
     pins = await _pins(db, snapshot.recipe_id)
+    posted = await _posted(db, rows, pins)
     now = datetime.now(UTC)
     stale = stale_after_days()
     lines: list[CostLineOut] = []
@@ -247,6 +285,7 @@ async def cost_out(
                 packs=line.packs,
                 packs_high=line.packs_high,
                 usda_offer=_offer_out(offers.get(line.id)),
+                posted_price=line.id in posted,
             )
         )
     return RecipeCostOut(
