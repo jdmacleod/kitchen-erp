@@ -3050,6 +3050,11 @@
             "title": "Pinned",
             "type": "boolean"
           },
+          "posted_price": {
+            "default": false,
+            "title": "Posted Price",
+            "type": "boolean"
+          },
           "price": {
             "anyOf": [
               {

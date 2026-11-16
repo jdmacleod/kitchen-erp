@@ -312,6 +312,8 @@ export interface CostLine {
   packs_high: string | null;
   /** USDA's value that would convert an unconvertible line, to take with "Use it". */
   usda_offer?: UsdaLineOffer | null;
+  /** Unpriced, though a product of it has a posted price, which never costs a line. */
+  posted_price?: boolean;
 }
 
 export interface UsdaLineOffer {
