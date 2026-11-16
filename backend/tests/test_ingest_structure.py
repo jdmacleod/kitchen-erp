@@ -633,6 +633,19 @@ def test_header_total_and_payment_rows_are_never_listed():
     assert passes.unread_rows == []
 
 
+def test_a_payment_row_printing_the_total_before_another_amount_is_never_listed():
+    # The total is the row's first amount; the last is the cash back, 0.00.
+    text = _SKIPPED_TEXT.replace("STORE #12 TERM 3", "PURCHASE 7.80 CASHBACK 0.00")
+    model = _model(
+        ("FENWICK OATS 2.00 F", "item", "2.00"),
+        ("LANTERN BAY NOODLES 3.40 F", "item", "3.40"),
+        ("HARBOUR TEA 1.15 F", "item", "1.15"),
+        ("TIDEWATER BEANS 1.25 F", "item", "1.25"),
+        ("TAX 0.00", "tax", "0.00"),
+    )
+    assert structure.post_passes(model, text, Decimal("7.80")).unread_rows == []
+
+
 # --- 10, again. A balance read as the tax -------------------------------------
 
 

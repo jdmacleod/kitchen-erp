@@ -798,6 +798,10 @@ async def test_an_empty_answer_for_a_part_with_items_is_asked_again(
     lines_requests = [r for r in transport.requests if r["stage"] == "lines"]
     temperatures = [r["body"]["options"]["temperature"] for r in lines_requests]
     assert temperatures == [0, 0.3, 0, 0]
+    # The task says a part may be only the footer. Asked again, it does not: a
+    # part of a few items above a long footer was read empty twice with it.
+    tasks = [r["body"]["messages"][-1]["content"] for r in lines_requests[:2]]
+    assert ["return an empty list" in task for task in tasks] == [True, False]
 
 
 async def test_a_part_with_items_that_stays_empty_is_unread_not_empty(
