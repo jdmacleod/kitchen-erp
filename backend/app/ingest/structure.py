@@ -388,12 +388,11 @@ def rows_not_read(
             continue
         if _NOT_A_PURCHASE.search(row) or _REGULAR_PRICE.search(row) or quantity_only(row):
             continue
-        amount = (_amounts(row) or [None])[-1]
-        if amount is not None and (
-            amount >= read_items
-            or (printed_total and abs(amount - printed_total) * 10 <= printed_total)
-        ):
+        amounts = _amounts(row)
+        if amounts and amounts[-1] >= read_items:
             continue  # the total or a payment of it, under a name OCR garbled
+        if printed_total and any(abs(a - printed_total) * 10 <= printed_total for a in amounts):
+            continue  # a payment row: the total first, then the cash back
         unread.append(row.strip())
         if len(unread) == _MAX_UNREAD:
             break

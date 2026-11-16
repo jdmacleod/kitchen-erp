@@ -100,7 +100,7 @@
     "model_attempts": 1,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "10",
+    "parser_version": "11",
     "printed_checks": null,
     "purchase_flags": [],
     "purchase_id": "<uuid>",
@@ -184,7 +184,7 @@
       "tax": "0",
       "tax_source": "none"
     },
-    "rules_version": 6
+    "rules_version": 7
   },
   "ocr": {
     "chars": 279,

@@ -138,7 +138,7 @@
     "model_attempts": 1,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "10",
+    "parser_version": "11",
     "printed_checks": {
       "savings_total": "0.00"
     },
@@ -233,7 +233,7 @@
       "tax": "0.12",
       "tax_source": "lines"
     },
-    "rules_version": 6
+    "rules_version": 7
   },
   "ocr": {
     "chars": 407,

@@ -161,11 +161,12 @@ async def read_lines(llm: LlmClient, text: str, *, deadline_at: float) -> LinesR
         ):
             # A valid answer with no items for a part that plainly has them. At
             # temperature 0 the same request would say the same, so ask once
-            # more a little differently; if that is empty too, the part is unread.
+            # more a little differently, without saying the part may hold no
+            # lines; if that is empty too, the part is unread.
             try:
                 answer, used = await llm.extract(
                     ReceiptLines,
-                    lines_stage.part_task(index, len(parts)),
+                    lines_stage.part_task(index, len(parts), may_be_empty=False),
                     part,
                     timeout_seconds=lines_stage.lines_budget_seconds(part),
                     deadline_seconds=max(_remaining(deadline_at), _MIN_REMAINING_SECONDS),

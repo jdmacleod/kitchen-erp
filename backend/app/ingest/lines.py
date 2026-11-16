@@ -96,7 +96,8 @@ GENERIC_PARSER = "llm-generic"
 #    out, footer sentences, and a tax line read at its base.
 # 9: a weight row whose "lb" OCR garbled ("ll", "|i") joins its item when its
 #    arithmetic proves it (unit_misread).
-GENERIC_PARSER_VERSION = "10"
+# 11: a part with items read empty is asked again without saying it may be empty.
+GENERIC_PARSER_VERSION = "11"
 RECONCILE_TOLERANCE = Decimal("0.02")
 # Flags that say the quantity is not what a person or the printed line said.
 # qty_inferred: read from the printed pattern because the model gave none.
@@ -187,16 +188,26 @@ def split_receipt(receipt_text: str) -> list[str]:
     return parts
 
 
-def part_task(index: int, count: int) -> str:
-    """The lines task for part ``index`` (1-based) of ``count``."""
+def part_task(index: int, count: int, *, may_be_empty: bool = True) -> str:
+    """The lines task for part ``index`` (1-based) of ``count``.
+
+    ``may_be_empty=False`` leaves out that a part may hold no lines, for asking
+    again about a part that plainly has items.
+    """
     if count == 1:
         return LINES_TASK
+    task = (
+        f"{LINES_TASK} This is part {index} of {count} of one receipt, split for length: "
+        "list only the lines in this part."
+    )
+    if not may_be_empty:
+        # A few items above a long footer were read as all footer, twice, with it.
+        return task
     # Without the rest of the receipt around it, a footer part's savings summary
     # looked like purchased lines to the model; say that a part may have none.
     return (
-        f"{LINES_TASK} This is part {index} of {count} of one receipt, split for length: "
-        "list only the lines in this part. A part may hold only the store header, the "
-        "totals, the payment or the footer; then return an empty list."
+        f"{task} A part may hold only the store header, the totals, the payment or "
+        "the footer; then return an empty list."
     )
 
 

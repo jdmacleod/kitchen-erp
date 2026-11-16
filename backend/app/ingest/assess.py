@@ -57,7 +57,9 @@ LINE_READING_FLAGS = frozenset(
 #    savings total lacks (free_item_coupon).
 # 6: a points row printed at 0.00 ("CLUB POINTS 0.00") is points_not_money, as a
 #    points count read as an amount already was, so it never waits to be identified.
-LINE_RULES_VERSION = 6
+# 7: a payment row that prints the total before another amount (the cash back) is
+#    not a row the model left out.
+LINE_RULES_VERSION = 7
 
 
 @dataclass
