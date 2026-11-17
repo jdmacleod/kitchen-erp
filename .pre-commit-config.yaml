@@ -32,7 +32,7 @@ repos:
   # ruff reads backend/pyproject.toml for backend/ and tools/ruff.toml (which
   # extends it) for tools/: one rule set for both.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.3  # matches backend/uv.lock
+    rev: v0.17.5  # matches backend/uv.lock
     hooks:
       - id: ruff
         files: ^(backend|tools)/
