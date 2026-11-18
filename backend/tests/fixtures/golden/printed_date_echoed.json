@@ -93,7 +93,7 @@
       "tax": "0",
       "tax_source": "none"
     },
-    "rules_version": 7
+    "rules_version": 8
   },
   "ocr": {
     "chars": 178,

@@ -59,7 +59,11 @@ LINE_READING_FLAGS = frozenset(
 #    points count read as an amount already was, so it never waits to be identified.
 # 7: a payment row that prints the total before another amount (the cash back) is
 #    not a row the model left out.
-LINE_RULES_VERSION = 7
+# 8: a rate priced per one unit ("0.88 USD/1lb") is a rate; a weight joins its item
+#    past a regular-price row or a "Manual Weight" label printed between them, and
+#    the label is dropped; a line read from a row with no amount takes the row
+#    below that prints it (joined_row_below); a donation read as an item is a fee.
+LINE_RULES_VERSION = 8
 
 
 @dataclass

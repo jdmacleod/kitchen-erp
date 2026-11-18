@@ -25,11 +25,17 @@ def _difference(
 def donations_paid(
     lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None
 ) -> None:
-    """A donation read as a discount is a fee: the shopper paid it.
+    """A donation read as a discount or an item is a fee: the shopper paid it.
 
-    Only when the receipt then adds up more closely to its printed total; without
+    Read as an item, the money is already right and only the kind changes, so
+    the line is not offered as a product to identify. Read as a discount, only
+    when the receipt then adds up more closely to its printed total; without
     one, nothing changes. The line is flagged ``donation_paid``.
     """
+    for line in lines:
+        if line.line_kind == "item" and line.line_total > 0 and _DONATION.search(line.raw_text):
+            line.line_kind = "fee"
+            line.flags.append("donation_paid")
     if printed_total is None:
         return
     for line in lines:

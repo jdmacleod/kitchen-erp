@@ -65,6 +65,9 @@ def _shape(lines: list[lines_mod.ParsedLine]) -> list[tuple]:
         ("2 @ 1/ $8.99", ("2", "each", "8.99", None)),
         # A weight a till labels as one, under a meat counter's item.
         ("Manual Weight 3.40 lb @ 2.50 USD/lb", ("3.40", "lb", "2.50", None)),
+        # A till that prices per one unit.
+        ("0.84 lb @ 1.49 USD/1lb", ("0.84", "lb", "1.49", None)),
+        ("0.50 kg @ 4.00 /1 kg", ("0.50", "kg", "4.00", None)),
     ],
 )
 def test_a_row_that_is_only_a_quantity_is_read(raw, expected):
@@ -218,6 +221,53 @@ def test_a_weight_below_a_priced_item_joins_it():
         ["qty_from_line_below"],
     )  # fmt: skip
     assert len(kept) == 2
+
+
+def test_a_weight_joins_its_item_past_a_regular_price_row():
+    lines = _read(
+        ("WREN ONIONS 1.20 F", "item", "1.20"),
+        ("Regular Price $0.90", "discount", "1.20"),
+        ("1.50 lb @ 0.80 USD/1lb", "item", "1.20"),
+        ("HEATH PEPPERS 0.60 F", "item", "0.60"),
+    )
+    kept, merged = lines_mod.merge_quantity_lines(lines)
+    assert merged == ["1.50 lb @ 0.80 USD/1lb"]
+    assert _shape(kept)[0] == (
+        1, "WREN ONIONS 1.20 F", "item", "1.50", "lb", "0.80", "1.20", None,
+        ["qty_from_line_below"],
+    )  # fmt: skip
+    # The regular price is left for fold_regular_prices.
+    assert [line.raw_text for line in kept] == [
+        "WREN ONIONS 1.20 F",
+        "Regular Price $0.90",
+        "HEATH PEPPERS 0.60 F",
+    ]
+
+
+def test_a_weight_joins_its_item_past_a_weight_label_which_is_dropped():
+    lines = _read(
+        ("KESTREL PORK SHOULDER 1PC 14.94 F", "item", "14.94"),
+        ("Manual Weight", "item", "14.94"),
+        ("4.98 lb @ 3.00 USD/1lb", "item", "14.94"),
+        ("CINDER FLOUR 2.50 F", "item", "2.50"),
+    )
+    kept, merged = lines_mod.merge_quantity_lines(lines)
+    assert merged == ["4.98 lb @ 3.00 USD/1lb", "Manual Weight"]
+    assert _shape(kept) == [
+        (1, "KESTREL PORK SHOULDER 1PC 14.94 F", "item", "4.98", "lb", "3.00", "14.94", None,
+         ["qty_from_line_below"]),
+        (2, "CINDER FLOUR 2.50 F", "item", "1", "each", None, "2.50", None, []),
+    ]  # fmt: skip
+
+
+@pytest.mark.parametrize("raw", ["Manual Weight", "NET WT:", "net weight"])
+def test_a_row_that_is_only_a_weight_label_is_one(raw):
+    assert lines_mod.weight_label_only(raw)
+
+
+@pytest.mark.parametrize("raw", ["WEIGHT", "WEIGHT WATCHERS BAR 2.00", "Manual Weight 3.40 lb"])
+def test_a_row_with_more_than_a_weight_label_is_not_one(raw):
+    assert not lines_mod.weight_label_only(raw)
 
 
 def test_a_count_that_fits_both_neighbours_is_left_for_review():

@@ -212,7 +212,7 @@
       "tax": "1.90",
       "tax_source": "lines"
     },
-    "rules_version": 7
+    "rules_version": 8
   },
   "ocr": {
     "chars": 515,
