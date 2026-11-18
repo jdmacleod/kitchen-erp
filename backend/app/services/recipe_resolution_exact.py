@@ -17,7 +17,7 @@ from app.core.errors import ApiError
 from app.models import AppUser, Recipe, RecipeIngredient
 from app.schemas.catalog import IngredientCreate
 from app.schemas.recipes import ResolveDecisionIn
-from app.services import recipe_resolution
+from app.services import recipe_proposals, recipe_resolution
 
 
 async def accept_exact(db: AsyncSession, user: AppUser) -> int:
@@ -32,7 +32,7 @@ async def accept_exact(db: AsyncSession, user: AppUser) -> int:
     ctx = await recipe_resolution.load_context(db)
     exact = []
     for name_norm in names:
-        found = await recipe_resolution._standard_tier(db, ctx, name_norm)
+        found = await recipe_proposals._standard_tier(db, ctx, name_norm)
         if found and found[0].exact:
             exact.append((name_norm, found[0]))
     # Two names can mean one entry ("rutabaga", "swede"): the
