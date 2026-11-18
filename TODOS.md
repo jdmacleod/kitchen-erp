@@ -74,6 +74,32 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Vision reading Phase 1
 
+## Receipts
+
+### Offer to remember a barcode printed in a receipt line
+
+**What:** When an identified receipt line carries a valid GTIN and the chosen product has no `gtin` identifier, offer "Remember barcode" beside the code offer, and prefill the barcode in naming mode and "Create product" from the line.
+
+**Why:** Some tills print the product barcode inside each item's text. `receipt_codes.read` finds it, but the offer covers only vendor-positioned codes, so the barcode is read and then dropped, and the next receipt or shelf scan with that barcode finds nothing.
+
+**Context:** Issue #456. Deferred by the open-issues review (2026-11-17): seen on one first receipt from one vendor. Needs a ruling on whether a GTIN read from receipt text is ever recorded without a click; spec 04 2K and criterion 72 say nothing is, and the proposal keeps that. Start from `code_offers` (`LineCodes.offer`) in `services/resolution.py` and the 2I naming path. A GTIN another product holds stays `409 identifier_taken`.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** A second vendor whose till prints barcodes in line text, and the ruling
+
+### Longer item codes for weighed items at counters that share one
+
+**What:** Let a vendor's `rw_layout` take a longer item code, or mark the counters whose items share a code.
+
+**Why:** At one vendor two counter items read the same five-digit item code, because the digit that tells them apart comes after the digits the layout takes.
+
+**Context:** Issue #448, item 4. Items 1–3 shipped: #449 holds a shared code as a suggestion instead of identifying other wording on its own, and #467 lists a product's codes and forgets one from the product page. Deferred by the open-issues review (2026-11-17). Start from `catalog/receipt_codes.py` and `catalog/barcodes.py`.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** A second counter whose items share a code
+
 ## Vendors
 
 ### Public vendor dataset and reference enrichment tool
@@ -96,11 +122,11 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 **Why:** Recipes name ingredients at different levels ("cheese", "parmesan"), and substitution and cost rollups want the chain.
 
-**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VC6). Doc 12 rule 6 proposed it, but satisfying through parents changes what price comparison (`ingredient_offer`) and costing mean. Sub-phase 1G ships flat ingredients, and a `parent_id` can be added later without reshaping anything. The Phase 3 review (2026-10-09) kept ingredients flat for costing: a product fulfils a recipe line only when its ingredient, after `merged_into`, is the line's.
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VC6). Doc 12 rule 6 proposed it, but satisfying through parents changes what price comparison (`ingredient_offer`) and costing mean. Sub-phase 1G ships flat ingredients, and a `parent_id` can be added later without reshaping anything. The Phase 3 review (2026-10-09) kept ingredients flat for costing: a product fulfils a recipe line only when its ingredient, after `merged_into`, is the line's. Issue #525 (2026-11-16) brought the first recipe case: a generic spirit line lost its only price once its bottles were filed under a style. The open-issues review (2026-11-17) kept `parent_id` deferred: the measured harm was one line, which a pin covers, and the cleanup check that offers to move a product to a more specific standard entry ships on its own. When this is built, parent fulfilment must cover `ingredient_offer` (Compare and the trip planner) as well as costing, and `recipe_cost_triggers` must carry a child's price change to recipes with a parent line.
 
-**Effort:** M (human) / S (CC)
+**Effort:** L (human) / M (CC)
 **Priority:** P3
-**Depends on:** Deferred past Phase 3 (review 2026-10-09); a recipe or comparison that needs the chain
+**Depends on:** A second measured recipe line that a pin can't reasonably cover (#525 stays open for it)
 
 ### USDA attribute names and FoodOn identifiers for the usda tier
 
