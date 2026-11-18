@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Ingredient, RecipeCostLine, RecipeIngredient
 from app.models.catalog import IngredientRef
 from app.services import usda_review
-from app.services.recipe_costing import from_unit_of
+from app.services.recipe_cost_lines import from_unit_of
 from app.services.usda_review import DensityOffer, MeasureOffer, ReviewGroup, measure_label
 from app.units import UnitParseFailure, parse_unit
 from app.units.convert import PIECE_LABELS

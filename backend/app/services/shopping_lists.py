@@ -40,7 +40,7 @@ from app.schemas.plan import (
     SkippedLine,
     UserBrief,
 )
-from app.services.recipe_costing import from_unit_of
+from app.services.recipe_cost_lines import from_unit_of
 from app.services.units import load_units
 from app.units import ConversionContext, ConversionFailure, Measure, convert
 from app.units.table import Unit

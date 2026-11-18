@@ -46,7 +46,7 @@ from app.catalog.standard_match import match_entry
 from app.core.config import Settings, get_settings
 from app.recipes.cooklang import IngredientRef, ParseError, Recipe, parse
 from app.recipes.prep import strip_prep
-from app.services.recipe_resolution import Context, _exact, lookup
+from app.services.recipe_lookup import Context, _exact, lookup
 
 Bucket = Literal["conformant", "inflection", "drift", "unknown", "negligible", "ignored"]
 BUCKETS: tuple[Bucket, ...] = (
@@ -86,7 +86,7 @@ def _standard_target(ctx: Context, name_norm: str) -> tuple[str, TargetKind] | N
 
     The entry's catalog ingredient when there is an active one, else the entry
     itself to create from. An inactive ingredient holding the entry offers
-    nothing, as in ``recipe_resolution._standard_tier``.
+    nothing, as in ``recipe_proposals._standard_tier``.
     """
     # Prep words are the prep tier's, which keeps them as the note.
     entry = match_entry(name_norm, prep=False)

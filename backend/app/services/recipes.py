@@ -17,49 +17,48 @@ list and ignored names in the same transaction. Cost snapshots (3D) follow in
 that transaction too: a recipe whose content changed, or whose waiting lines
 the lookup settled, is recomputed, and one committed unchanged only loses its
 provisional flag (``recipe_cost_triggers``).
+
+The mount's files and the rows a parse gives live in ``services/recipe_files``;
+the reads (list, detail, relink, delete) in ``services/recipe_reads``, re-exported
+here for the router and the tests.
 """
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
-from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.catalog.names import normalize_name
 from app.core.config import Settings, get_settings
-from app.core.errors import ApiError
 from app.core.logging import get_logger
-from app.models import Ingredient, Recipe, RecipeIngredient
+from app.models import Recipe, RecipeIngredient
 from app.recipes import index
-from app.recipes.cooklang import (
-    ParseError,
-    QuantityNumber,
-    QuantityRange,
-    QuantityText,
-    parse,
-)
+from app.recipes.cooklang import ParseError
 from app.recipes.cooklang import Recipe as ParsedRecipe
-from app.recipes.hashing import blob_sha1
 from app.recipes.repo import RepoChanging, RepoView, open_repo
-from app.schemas.recipes import (
-    MountState,
-    RecipeIngredientOut,
-    RecipeListItem,
-    RecipeOut,
-    RecipesStatus,
-    RelinkProposal,
-    ScanOut,
-    StatusCounts,
+from app.schemas.recipes import RecipesStatus, ScanOut, StatusCounts
+from app.services import recipe_cost_triggers, recipe_pages, recipe_resolution
+from app.services.recipe_files import (
+    Parsed,
+    _error_message,
+    _has_front_matter_title,
+    _ingredient_names,
+    _ingredient_rows,
+    _last_indexed_head,
+    _list_files,
+    _stored,
+    _title_for,
+    _title_of,
+    inspect_mount,
 )
-from app.services import recipe_cost_triggers, recipe_cost_views, recipe_pages, recipe_resolution
-
-Parsed = ParsedRecipe | ParseError
+from app.services.recipe_reads import delete_recipe as delete_recipe
+from app.services.recipe_reads import get_recipe as get_recipe
+from app.services.recipe_reads import list_recipes as list_recipes
+from app.services.recipe_reads import recipe_out as recipe_out
+from app.services.recipe_reads import relink as relink
 
 log = get_logger(__name__)
 
@@ -68,204 +67,6 @@ log = get_logger(__name__)
 _last_scan: dict[str, datetime | None] = {"at": None}
 # The advisory-lock key that serializes scans (one per database; arbitrary but fixed).
 SCAN_LOCK_KEY = 0x6B65_7270_7263  # "kerprc"
-
-
-@dataclass(frozen=True)
-class Mount:
-    root: Path
-    state: MountState
-    files: list[Path]
-
-
-def inspect_mount(settings: Settings | None = None) -> Mount:
-    """The mount's state and its ``.cook`` files, never descending into ``.git``.
-
-    A ``.git`` entry counts as a repository (package 2, 2026-10-09): a repository
-    with no ``.cook`` files is mounted and has no recipes, so the scan runs and
-    every indexed recipe becomes missing. "No repository" is a directory that is
-    missing, or that holds neither ``.cook`` files nor ``.git``: ``empty`` when it
-    holds nothing at all, ``no_cook_files`` when it holds other things.
-    """
-    settings = settings or get_settings()
-    root = Path(settings.recipes_path)
-    if not root.is_dir():
-        return Mount(root, "missing", [])
-    files: list[Path] = []
-    any_entry = False
-    for dirpath, dirnames, filenames in os.walk(root):
-        any_entry = any_entry or bool(filenames) or bool(dirnames)
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
-        for name in sorted(filenames):
-            if name.endswith(".cook") and not name.startswith("."):
-                files.append(Path(dirpath) / name)
-    if files or (root / ".git").exists():
-        return Mount(root, "mounted", files)
-    return Mount(root, "empty" if not any_entry else "no_cook_files", [])
-
-
-# --- what the parser gives a row ----------------------------------------------------
-
-
-def _title_for(path: str) -> str:
-    """The file's stem, humanized: the title when the front matter has none."""
-    stem = Path(path).stem
-    text = " ".join(stem.replace("-", " ").replace("_", " ").split()) or stem
-    return text[:1].upper() + text[1:]
-
-
-def _title_of(parsed: Parsed | None, path: str) -> str:
-    if isinstance(parsed, ParsedRecipe) and parsed.title:
-        return parsed.title
-    return _title_for(path)
-
-
-def _has_front_matter_title(row: Recipe) -> bool:
-    title = (row.front_matter or {}).get("title")
-    return isinstance(title, str) and bool(title.strip())
-
-
-def _error_message(error: ParseError) -> str:
-    return f"{error.message} (line {error.line}, column {error.column})"
-
-
-def _parse_bytes(data: bytes) -> Parsed:
-    """Parse a file's bytes; a file that is not UTF-8 text is a parse error too."""
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        line = data.count(b"\n", 0, exc.start) + 1
-        column = exc.start - (data.rfind(b"\n", 0, exc.start) + 1) + 1
-        return ParseError("file is not UTF-8 text", line, column)
-    return parse(text)
-
-
-def _ingredient_rows(parsed: ParsedRecipe) -> list[RecipeIngredient]:
-    """One row per ingredient reference in document order, ``seq`` from 1."""
-    rows: list[RecipeIngredient] = []
-    for seq, (section, ref) in enumerate(parsed.ingredient_lines, start=1):
-        quantity = ref.quantity
-        qty = qty_high = None
-        qty_text = None
-        if isinstance(quantity, QuantityNumber):
-            qty = quantity.value
-        elif isinstance(quantity, QuantityRange):
-            qty, qty_high = quantity.low, quantity.high
-        elif isinstance(quantity, QuantityText):
-            qty_text = quantity.text
-        rows.append(
-            RecipeIngredient(
-                seq=seq,
-                section=section,
-                raw_name=ref.raw_name,
-                name_norm=normalize_name(ref.raw_name),
-                qty_kind=quantity.kind,
-                qty=qty,
-                qty_high=qty_high,
-                qty_text=qty_text,
-                unit_text=ref.unit_text,
-                # The 1B parser's code, or NULL when it reported a failure (a
-                # measure label such as "clove" stays in unit_text for 3C).
-                unit=ref.unit if isinstance(ref.unit, str) else None,
-                note=ref.note,
-                # The negligible-name list is applied by the 3C lookup after the scan.
-                negligible=quantity.kind in ("none", "text"),
-                resolution="unmatched",
-                ingredient_id=None,
-                yield_mode="auto",
-            )
-        )
-    return rows
-
-
-def _names(parsed: Parsed | None) -> frozenset[str]:
-    """The normalized ingredient names the planner compares; empty for a parse error."""
-    if not isinstance(parsed, ParsedRecipe):
-        return frozenset()
-    return frozenset(
-        name for name in (normalize_name(ref.raw_name) for ref in parsed.ingredients) if name
-    )
-
-
-# --- the listing ----------------------------------------------------------------------
-
-
-def _list_files(
-    mount: Mount, now: float, settle_seconds: float, known: dict[str, str]
-) -> tuple[list[index.DiskFile], dict[str, Parsed]]:
-    """Each file with its hash, except those still settling, which are listed unhashed.
-
-    A file is read only once its modification time is outside the settle window,
-    so a half-written file is never hashed. A file whose hash differs from the
-    row stored at its path (``known``) is parsed, so that every path the planner
-    may create, update or move has a parse result; a file the index already
-    holds at that hash is not.
-    """
-    out: list[index.DiskFile] = []
-    parsed: dict[str, Parsed] = {}
-    for file in mount.files:
-        rel = file.relative_to(mount.root).as_posix()
-        try:
-            mtime = file.stat().st_mtime
-        except FileNotFoundError:
-            continue  # gone between listing and stat: next scan sees whatever is true
-        content_hash: str | None = None
-        if now - mtime >= settle_seconds:
-            try:
-                data = file.read_bytes()
-            except FileNotFoundError:
-                continue
-            content_hash = blob_sha1(data)
-            if known.get(rel) != content_hash:
-                parsed[rel] = _parse_bytes(data)
-        result = parsed.get(rel)
-        out.append(
-            index.DiskFile(
-                rel,
-                mtime,
-                content_hash,
-                title=_title_of(result, rel) if result is not None else "",
-                ingredients=_names(result),
-            )
-        )
-    return out, parsed
-
-
-def _stored(rows: list[Recipe], names: dict[uuid.UUID, frozenset[str]]) -> list[index.StoredRecipe]:
-    return [
-        index.StoredRecipe(
-            id=row.id,
-            path=row.path,
-            content_hash=row.content_hash,
-            status=row.status,
-            title=row.title,
-            ingredients=names.get(row.id, frozenset()),
-        )
-        for row in rows
-    ]
-
-
-async def _ingredient_names(
-    db: AsyncSession, recipe_ids: list[uuid.UUID]
-) -> dict[uuid.UUID, frozenset[str]]:
-    """The normalized ingredient names of the last good parse, per recipe."""
-    if not recipe_ids:
-        return {}
-    found = await db.execute(
-        select(RecipeIngredient.recipe_id, RecipeIngredient.name_norm).where(
-            RecipeIngredient.recipe_id.in_(recipe_ids)
-        )
-    )
-    names: dict[uuid.UUID, set[str]] = {}
-    for recipe_id, name in found:
-        if name:
-            names.setdefault(recipe_id, set()).add(name)
-    return {recipe_id: frozenset(found_names) for recipe_id, found_names in names.items()}
-
-
-def _last_indexed_head(rows: list[Recipe]) -> str | None:
-    """The commit the most recent scan indexed against, from the rows it touched."""
-    newest = max((r for r in rows if r.head_commit), key=lambda r: r.last_seen_at, default=None)
-    return newest.head_commit if newest else None
 
 
 # --- applying the plan ----------------------------------------------------------------
@@ -558,172 +359,3 @@ async def status(db: AsyncSession, settings: Settings | None = None) -> RecipesS
         total=counts.ok + counts.parse_error + counts.missing,
         last_scan_at=max(candidates) if candidates else None,
     )
-
-
-async def list_recipes(
-    db: AsyncSession,
-    *,
-    status: str | None = None,
-    dirty: bool | None = None,
-    q: str | None = None,
-    completeness: str | None = None,
-) -> list[RecipeListItem]:
-    """Every recipe with its default ``latest`` cost when its current content has one (3D).
-
-    Ordered by title, then path (UI-7.3). ``q`` matches the title or the path, case
-    folded. ``completeness`` keeps recipes whose current cost has every line priced
-    (``complete``) or not (``incomplete``: some line unpriced, or no snapshot yet).
-    """
-    stmt = select(Recipe).order_by(func.lower(Recipe.title), Recipe.path)
-    if status is not None:
-        stmt = stmt.where(Recipe.status == status)
-    if dirty is not None:
-        stmt = stmt.where(Recipe.dirty.is_(dirty))
-    if q:
-        needle = f"%{_escape_like(q.strip())}%"
-        stmt = stmt.where(
-            Recipe.title.ilike(needle, escape="\\") | Recipe.path.ilike(needle, escape="\\")
-        )
-    rows = (await db.execute(stmt)).scalars().all()
-    costs = await recipe_cost_views.summaries(db, list(rows))
-    items = [
-        RecipeListItem.model_validate(row).model_copy(update={"cost": costs.get(row.id)})
-        for row in rows
-    ]
-    if completeness == "complete":
-        items = [i for i in items if i.cost is not None and i.cost.complete]
-    elif completeness == "incomplete":
-        items = [i for i in items if i.cost is None or not i.cost.complete]
-    return items
-
-
-def _escape_like(text: str) -> str:
-    """Escape the LIKE metacharacters so a typed ``%`` or ``_`` matches itself."""
-    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
-async def get_recipe(db: AsyncSession, recipe_id: uuid.UUID) -> Recipe:
-    row = await db.get(Recipe, recipe_id)
-    if row is None:
-        raise ApiError(404, "not_found", "No such recipe.")
-    return row
-
-
-async def recipe_out(db: AsyncSession, row: Recipe) -> RecipeOut:
-    relink: RelinkProposal | None = None
-    if row.relink_candidate_id is not None:
-        target = await db.get(Recipe, row.relink_candidate_id)
-        if target is not None:
-            relink = RelinkProposal(
-                target_id=target.id,
-                path=target.path,
-                title=target.title,
-                reason=row.relink_reason or "",
-            )
-    lines = (
-        (
-            await db.execute(
-                select(RecipeIngredient)
-                .where(RecipeIngredient.recipe_id == row.id)
-                .order_by(RecipeIngredient.seq)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    ingredient_ids = {line.ingredient_id for line in lines if line.ingredient_id is not None}
-    names: dict[uuid.UUID, str] = {}
-    if ingredient_ids:
-        found = await db.execute(
-            select(Ingredient.id, Ingredient.name).where(Ingredient.id.in_(ingredient_ids))
-        )
-        names = dict(found.all())
-    # Column by column: the row's `ingredients` and `pins` relationships are not
-    # loaded, and reading them here would lazy-load outside the session's greenlet.
-    columns = {
-        name: getattr(row, name)
-        for name in RecipeOut.model_fields
-        if name not in ("relink", "ingredients", "pins")
-    }
-    return RecipeOut(
-        **columns,
-        relink=relink,
-        ingredients=[
-            RecipeIngredientOut.model_validate(line).model_copy(
-                update={"ingredient_name": names.get(line.ingredient_id)}
-            )
-            for line in lines
-        ],
-        pins=await recipe_resolution.pins_out(db, row.id),
-    )
-
-
-async def relink(db: AsyncSession, recipe_id: uuid.UUID, target_id: uuid.UUID) -> Recipe:
-    """Confirm that a missing recipe became ``target``: the old row takes the new
-    file, its parse and its ingredient rows, and the new row goes, so pins and
-    history stay with the recipe."""
-    row = await get_recipe(db, recipe_id)
-    if row.status != "missing":
-        raise ApiError(409, "not_missing", "Only a missing recipe can be relinked.")
-    if target_id == recipe_id:
-        raise ApiError(409, "same_recipe", "A recipe cannot be relinked to itself.")
-    target = await db.get(Recipe, target_id)
-    if target is None:
-        raise ApiError(404, "not_found", "No such target recipe.")
-    if target.status == "missing":
-        raise ApiError(409, "target_missing", "The target recipe has no file either.")
-    carried = {
-        name: getattr(target, name)
-        for name in (
-            "path",
-            "title",
-            "servings",
-            "servings_text",
-            "content_hash",
-            "head_commit",
-            "dirty",
-            "parse_error_message",
-            "front_matter",
-            "body",
-            "last_indexed_at",
-            "last_seen_at",
-        )
-    }
-    # The target's ingredient rows become the recipe's and the rows of its last
-    # good parse at the old path go. A target that never parsed has no rows, and
-    # then the recipe keeps its last good ones (criterion 4), with the target's
-    # parse error on it.
-    target_lines = await db.scalar(
-        select(func.count())
-        .select_from(RecipeIngredient)
-        .where(RecipeIngredient.recipe_id == target.id)
-    )
-    if target_lines:
-        await db.execute(delete(RecipeIngredient).where(RecipeIngredient.recipe_id == row.id))
-        await db.execute(
-            update(RecipeIngredient)
-            .where(RecipeIngredient.recipe_id == target.id)
-            .values(recipe_id=row.id)
-        )
-    await db.delete(target)
-    await db.flush()  # the path must be free before the old row takes it
-    for name, value in carried.items():
-        setattr(row, name, value)
-    row.status = "parse_error" if carried["parse_error_message"] else "ok"
-    row.relink_candidate_id = None
-    row.relink_reason = None
-    await db.flush()
-    # The recipe's content is the new file's now; its history at the old hash stays.
-    await recipe_cost_triggers.after_recipe_changed(db, row.id)
-    await db.commit()
-    await db.refresh(row)
-    return row
-
-
-async def delete_recipe(db: AsyncSession, recipe_id: uuid.UUID) -> None:
-    """Remove a recipe explicitly; only one whose file is gone (3A)."""
-    row = await get_recipe(db, recipe_id)
-    if row.status != "missing":
-        raise ApiError(409, "not_missing", "Only a missing recipe can be removed.")
-    await db.delete(row)
-    await db.commit()
