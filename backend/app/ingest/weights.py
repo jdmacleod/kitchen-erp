@@ -81,13 +81,29 @@ class PrintedQuantity:
 
 
 # "/lb" after a rate, and what may be left once the quantity and amounts are out
-# of a quantity row: nothing, or a tax letter or two.
-_RATE_UNIT = re.compile(_CURRENCY + r"/\s*(?:lbs?|[il1|]bs?|kg|oz|g|ea|each)\b", re.I)
+# of a quantity row: nothing, or a tax letter or two. Some tills price per one
+# unit: "0.99 USD/1lb", "/1 kg".
+_RATE_UNIT = re.compile(
+    _CURRENCY + r"/\s*(?:1\s*(?=[a-z]))?(?:lbs?|[il1|]bs?|kg|oz|g|ea|each)\b", re.I
+)
 _TAX_CODE = re.compile(r"[A-Za-z*]{0,2}")
 # What a till may print before a weight to say what it is: "Manual Weight 3.40 lb
 # @ 2.50 USD/lb" under a meat counter's item. Not a name, so the row is still
 # only a weight.
 _WEIGHT_LABEL = re.compile(r"\b(?:manual\s+weight|net\s+(?:weight|wt)|weight)\b", re.I)
+# The same label on a row of its own, between a meat counter's item and its weight:
+#
+#     PORK SHOULDER        14.95 F
+#     Manual Weight
+#     4.98 lb @ 3.00 USD/1lb
+#
+# It is never a purchase. A bare "WEIGHT" is not taken alone: it could be a name.
+_WEIGHT_LABEL_ROW = re.compile(r"\W*(?:manual\s+weight|net\s+(?:weight|wt))\W*", re.I)
+
+
+def weight_label_only(raw_text: str) -> bool:
+    """Whether the row is only a weight label such as "Manual Weight"."""
+    return _WEIGHT_LABEL_ROW.fullmatch(raw_text) is not None
 
 
 def quantity_only(raw_text: str) -> PrintedQuantity | None:

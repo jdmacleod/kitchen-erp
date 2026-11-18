@@ -53,6 +53,7 @@ from app.ingest.weights import (
     _amounts,
     _unit,
     quantity_only,
+    weight_label_only,
 )
 from app.ingest.witness import appears_in
 
@@ -632,6 +633,14 @@ def merge_quantity_lines(lines: list[ParsedLine]) -> tuple[list[ParsedLine], lis
             return None
         return other
 
+    def neighbour(i: int, step: int) -> ParsedLine | None:
+        # A till can print the item's regular price, or a label such as "Manual
+        # Weight", between the item and its weight; neither is the item.
+        j = i + step
+        while 0 <= j < len(lines) and _between_item_and_weight(lines[j]):
+            j += step
+        return item_at(j)
+
     for i, line in enumerate(lines):
         if line.line_kind not in ("item", "discount") or line.seq in taken:
             continue
@@ -640,7 +649,7 @@ def merge_quantity_lines(lines: list[ParsedLine]) -> tuple[list[ParsedLine], lis
             continue
         target: ParsedLine | None = None
         flag = ""
-        above, below = item_at(i - 1), item_at(i + 1)
+        above, below = neighbour(i, -1), neighbour(i, 1)
         if printed.amount is None:
             # The amount is on the item's row; it has to be printed there, since
             # a total the model gave a row with no amount proves nothing.
@@ -671,11 +680,19 @@ def merge_quantity_lines(lines: list[ParsedLine]) -> tuple[list[ParsedLine], lis
         joined[line.seq] = target.seq
         taken.add(target.seq)
         merged.append(line.raw_text)
-    kept = [line for line in lines if line.seq not in joined]
+    labels = {line.seq for line in lines if weight_label_only(line.raw_text)}
+    merged += [line.raw_text for line in lines if line.seq in labels]
+    kept = [line for line in lines if line.seq not in joined and line.seq not in labels]
     for line in kept:
         if line.parent_seq in joined:
             line.parent_seq = joined[line.parent_seq]
+        elif line.parent_seq in labels:
+            line.parent_seq = None
     return _renumber(kept), merged
+
+
+def _between_item_and_weight(line: ParsedLine) -> bool:
+    return bool(_REGULAR_PRICE.search(line.raw_text)) or weight_label_only(line.raw_text)
 
 
 def parse_model_lines(result: ReceiptLines) -> list[ParsedLine]:

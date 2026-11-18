@@ -821,6 +821,71 @@ def test_a_donation_stays_a_discount_when_the_receipt_adds_up_as_read():
     assert _by_text(lines)["STORE DONATION 0.40"].line_kind == "discount"
 
 
+def test_a_donation_read_as_an_item_is_paid_without_a_total():
+    lines = _passes(
+        ("KESTREL PORK SHOULDER 24.60 F", "item", "24.60"),
+        ("ROUND UP FOR CHARITY 0.40", "item", "0.40"),
+    )
+    donation = _by_text(lines)["ROUND UP FOR CHARITY 0.40"]
+    assert (donation.line_kind, donation.line_total) == ("fee", Decimal("0.40"))
+    assert donation.flags == ["donation_paid"]
+
+
+# --- A line read from a row with no amount takes the row below ----------------
+
+
+def test_a_heading_read_with_the_amount_below_it_takes_that_row():
+    text = (
+        "Bakery\nCINDER FLOUR 2.50 F\nGeneral\nCharity Round Up 0.40\nSUBTOTAL 2.90\nTOTAL 2.90\n"
+    )
+    lines = _passes(
+        ("CINDER FLOUR 2.50 F", "item", "2.50"),
+        ("General", "item", "0.40"),
+        text=text,
+        total="2.90",
+    )
+    donation = lines[1]
+    assert donation.raw_text == "General Charity Round Up 0.40"
+    assert donation.printed_row == "Charity Round Up 0.40"
+    assert (donation.line_kind, donation.line_total) == ("fee", Decimal("0.40"))
+    assert donation.flags == ["joined_row_below", "donation_paid"]
+
+
+def test_a_name_wrapped_onto_a_second_row_is_joined():
+    text = "HEATH ORGANIC\nSTONE GROUND OATS 4.25 F\nTOTAL 4.25\n"
+    lines = _passes(("HEATH ORGANIC", "item", "4.25"), text=text, total="4.25")
+    assert lines[0].raw_text == "HEATH ORGANIC STONE GROUND OATS 4.25 F"
+    assert lines[0].flags == ["joined_row_below"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # The row below prints another amount.
+        "General\nCharity Round Up 0.50\nTOTAL 0.40\n",
+        # The row below is a weight: merge_quantity_lines joins that.
+        "General\n0.50 lb @ 0.80 /lb 0.40\nTOTAL 0.40\n",
+        # The line's own row prints an amount.
+        "General 0.40\nCharity Round Up 0.40\nTOTAL 0.40\n",
+    ],
+)
+def test_a_line_is_not_joined_to_a_row_below_that_does_not_prove_it(text):
+    lines = _passes(("General", "item", "0.40"), text=text, total="0.40")
+    assert "joined_row_below" not in lines[0].flags
+    assert lines[0].raw_text.startswith("General")
+
+
+def test_a_row_below_another_line_read_is_not_taken_again():
+    text = "General\nCharity Round Up 0.40\nTOTAL 0.80\n"
+    lines = _passes(
+        ("General", "item", "0.40"),
+        ("Charity Round Up 0.40", "fee", "0.40"),
+        text=text,
+        total="0.80",
+    )
+    assert lines[0].raw_text == "General"
+
+
 # --- A free-item coupon read as an item ----------------------------------------
 
 _FREE_ROWS = (
