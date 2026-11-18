@@ -19,6 +19,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.ingest.donations import donations_paid
+from app.ingest.heading_rows import amount_from_row_below
 from app.ingest.lines import (
     _REGULAR_PRICE,
     _SAVING,
@@ -133,6 +134,7 @@ def post_passes(
     """Every deterministic pass over the model's lines, in the stage's order."""
     parsed = parse_model_lines(result)
     rows_at = anchor_rows(parsed, receipt_text)
+    amount_from_row_below(parsed, receipt_text, rows_at)
     parsed = savings_under_their_items(parsed, receipt_text, rows_at)
     checks = printed_checks(receipt_text)
     parsed, merged = merge_quantity_lines(parsed)
