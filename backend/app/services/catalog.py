@@ -51,10 +51,10 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
-from app.services import best_by, brands, new_products, recipe_cost_triggers
+from app.services import best_by, brands, new_products, pricebook, recipe_cost_triggers
 from app.services.normalize import normalize_receipt_text
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
-from app.services.pricebook import recompute_for_ingredient, recompute_for_product
+from app.services.pricebook import recompute_for_ingredient
 from app.services.spellings import add_generated_spellings, add_spelling
 from app.services.units import build_context, load_units
 from app.units import (
@@ -634,6 +634,15 @@ def _ingredient_conflict(exc: IntegrityError) -> ApiError:
 async def update_ingredient(
     db: AsyncSession, ingredient_id: uuid.UUID, payload: IngredientUpdate
 ) -> Ingredient:
+    await update_ingredient_core(db, ingredient_id, payload)
+    await db.commit()
+    return await get_ingredient(db, ingredient_id)
+
+
+async def update_ingredient_core(
+    db: AsyncSession, ingredient_id: uuid.UUID, payload: IngredientUpdate
+) -> int:
+    """update_ingredient in the caller's transaction, never committing: prices renormalized."""
     ingredient = await get_ingredient(db, ingredient_id)
     old_unit = ingredient.canonical_unit
     data = payload.model_dump(exclude_unset=True)
@@ -662,15 +671,15 @@ async def update_ingredient(
         await db.flush()
         await best_by.refresh_ingredient(db, ingredient_id)
     try:
-        await db.commit()
+        await db.flush()
     except IntegrityError as exc:
         await db.rollback()
         raise _ingredient_conflict(exc) from exc
-    if bridge_changed:
-        await _after_ingredient_bridge_change(
-            db, ingredient_id, canonical_unit_changed=unit_changed
-        )
-    return await get_ingredient(db, ingredient_id)
+    if not bridge_changed:
+        return 0
+    return await recompute_for_ingredient(
+        db, ingredient_id, canonical_unit_changed=unit_changed, commit=False
+    )
 
 
 async def set_ingredient_active(
@@ -728,7 +737,7 @@ async def add_measure(
         await db.rollback()
         raise ApiError(409, "measure_label_taken", "That measure label already exists.") from exc
     await db.refresh(measure)
-    await _after_ingredient_bridge_change(db, ingredient_id)
+    await recompute_for_ingredient(db, ingredient_id)
     return measure
 
 
@@ -749,7 +758,7 @@ async def update_measure(
         await db.rollback()
         raise ApiError(409, "measure_label_taken", "That measure label already exists.") from exc
     await db.refresh(measure)
-    await _after_ingredient_bridge_change(db, measure.ingredient_id)
+    await recompute_for_ingredient(db, measure.ingredient_id)
     return measure
 
 
@@ -769,7 +778,7 @@ async def delete_measure(db: AsyncSession, measure_id: uuid.UUID) -> None:
     ingredient_id = measure.ingredient_id
     await db.delete(measure)
     await db.commit()
-    await _after_ingredient_bridge_change(db, ingredient_id)
+    await recompute_for_ingredient(db, ingredient_id)
 
 
 # --- products ---------------------------------------------------------------
@@ -1107,9 +1116,18 @@ async def _check_pieces(db: AsyncSession, product: Product) -> None:
         )
 
 
-async def update_product(  # noqa: C901, PLR0912, PLR0915
+async def update_product(
     db: AsyncSession, product_id: uuid.UUID, payload: ProductUpdate
 ) -> Product:
+    await update_product_core(db, product_id, payload)
+    await db.commit()
+    return await get_product(db, product_id)
+
+
+async def update_product_core(  # noqa: C901, PLR0912, PLR0915
+    db: AsyncSession, product_id: uuid.UUID, payload: ProductUpdate
+) -> None:
+    """update_product in the caller's transaction: flushes and recomputes, never commits."""
     product = await get_product(db, product_id)
     data = payload.model_dump(exclude_unset=True)
     if data.pop("clear_pack", False):
@@ -1199,15 +1217,14 @@ async def update_product(  # noqa: C901, PLR0912, PLR0915
         & set(payload.model_dump(exclude_unset=True))
     )
     try:
-        await db.commit()
+        await db.flush()
     except IntegrityError as exc:
         await db.rollback()
         raise _product_conflict(exc) from exc
     if bridge_changed:
-        await _after_product_bridge_change(db, product_id)
+        await pricebook.recompute_for_product_core(db, product_id)
     # The loaded ingredient is still the old one after a move; read it again.
     db.expire(product)
-    return await get_product(db, product_id)
 
 
 async def set_product_active(db: AsyncSession, product_id: uuid.UUID, active: bool) -> Product:
@@ -1386,21 +1403,3 @@ async def bench(db: AsyncSession, ingredient_id: uuid.UUID, payload: ConvertIn) 
     return ConvertOut(
         ok=False, failure_code=result.code, message=result.message, version=result.version
     )
-
-
-# --- recompute hooks (price book) -------------------------------------------
-#
-# These were function-level imports to break a cycle: pricebook imported the
-# cursor helpers and build_context from here. Those now live in
-# services/pagination.py and services/units.py, pricebook no longer imports this
-# module at all, and the dependency runs one way — so the import can say so.
-
-
-async def _after_ingredient_bridge_change(
-    db: AsyncSession, ingredient_id: uuid.UUID, *, canonical_unit_changed: bool = False
-) -> None:
-    await recompute_for_ingredient(db, ingredient_id, canonical_unit_changed=canonical_unit_changed)
-
-
-async def _after_product_bridge_change(db: AsyncSession, product_id: uuid.UUID) -> None:
-    await recompute_for_product(db, product_id)
