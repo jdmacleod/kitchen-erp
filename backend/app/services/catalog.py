@@ -51,10 +51,10 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
-from app.services import best_by, brands, new_products, pricebook, recipe_cost_triggers
+from app.services import best_by, brands, new_products, recipe_cost_triggers
 from app.services.normalize import normalize_receipt_text
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
-from app.services.pricebook import recompute_for_ingredient
+from app.services.pricebook import recompute_for_ingredient, recompute_for_product_core
 from app.services.spellings import add_generated_spellings, add_spelling
 from app.services.units import build_context, load_units
 from app.units import (
@@ -1222,7 +1222,7 @@ async def update_product_core(  # noqa: C901, PLR0912, PLR0915
         await db.rollback()
         raise _product_conflict(exc) from exc
     if bridge_changed:
-        await pricebook.recompute_for_product_core(db, product_id)
+        await recompute_for_product_core(db, product_id)
     # The loaded ingredient is still the old one after a move; read it again.
     db.expire(product)
 

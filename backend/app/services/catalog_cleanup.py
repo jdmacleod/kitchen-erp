@@ -92,6 +92,8 @@ _ALONE = {
     ),
     "unit_mismatch": (unit_switch.lock, unit_switch.for_ingredient, unit_switch.accept),
 }
+# The kinds as the code names them, so a log line never repeats a request's text.
+_KIND_NAMES = {"product_move": "product_move", "unit_mismatch": "unit_mismatch"}
 _FAILED = {
     "product_move": "The move failed, and nothing changed.",
     "unit_mismatch": "The switch failed, and nothing changed.",
@@ -384,12 +386,15 @@ async def _apply_alone(
     again, the fingerprint the person saw checked, then applied and committed."""
     kind, subject = parsed
     lock, build, accept = _ALONE[kind]
+    s: Suggestion | None = None
 
-    def record(outcome: str, fingerprint: str | None, **counts: int) -> None:
+    def record(outcome: str, **counts: int) -> None:
+        # Only what the server holds: the suggestion's own kind, id and fingerprint,
+        # never the key or fingerprint the request sent.
         log.info(
             "cleanup accept",
-            extra={"kind": kind, "subject_id": str(subject), "fingerprint": fingerprint,
-                   "outcome": outcome, **counts},
+            extra={"kind": _KIND_NAMES[kind], "subject_id": str(s.subject_id) if s else None,
+                   "fingerprint": s.fingerprint if s else None, "outcome": outcome, **counts},
         )  # fmt: skip
 
     await lock(db, subject)
@@ -397,11 +402,11 @@ async def _apply_alone(
     s = None if skipped else next((x for x in await build(db, subject) if x.key == key), None)
     if s is None:
         await db.rollback()
-        record("gone", sent)
+        record("gone")
         raise _gone()
     if sent is not None and sent != s.fingerprint:
         await db.rollback()
-        record("changed", sent)
+        record("changed")
         raise ApiError(
             409,
             "cleanup_changed",
@@ -413,15 +418,17 @@ async def _apply_alone(
         await db.commit()
     except ApiError:
         await db.rollback()
-        record("failed", s.fingerprint)
+        record("failed")
         raise
     except Exception as exc:
         await db.rollback()
-        log.exception("cleanup accept failed", extra={"kind": kind, "subject_id": str(subject)})
-        record("failed", s.fingerprint)
+        log.exception(
+            "cleanup accept failed", extra={"kind": s.kind, "subject_id": str(s.subject_id)}
+        )
+        record("failed")
         raise ApiError(500, "unit_switch_failed" if kind == "unit_mismatch" else "cleanup_failed",
                        _FAILED[kind]) from exc  # fmt: skip
-    record("applied", s.fingerprint, **counts)
+    record("applied", **counts)
     return Applied(1, [], [], [{"key": key, **counts}])
 
 
