@@ -1,12 +1,10 @@
 // Invented recipes for the Cook tests (07, Fixtures): no real dish, vendor or price.
 
 import type { ProductListItem } from "../api/catalog";
+import type { CostHistory, CostLine, RecipeCost } from "../api/recipeCosts";
 import type {
   BodySection,
-  CostHistory,
-  CostLine,
   Recipe,
-  RecipeCost,
   RecipeIngredient,
   RecipeListItem,
   RecipesStatus,

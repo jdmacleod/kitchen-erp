@@ -2,7 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { IngredientMatch } from "../api/catalog";
-import type { BodySection, Recipe, RecipeCost, RecipePin } from "../api/recipes";
+import type { RecipeCost } from "../api/recipeCosts";
+import type { BodySection, Recipe, RecipePin } from "../api/recipes";
 import {
   adminUser,
   errorResponse,

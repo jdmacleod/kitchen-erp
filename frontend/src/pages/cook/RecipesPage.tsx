@@ -2,11 +2,8 @@ import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { useInbox } from "../../api/inbox";
+import { floorText, formatCostRange, known, pricedSentence } from "../../api/recipeCosts";
 import {
-  floorText,
-  formatCostRange,
-  known,
-  pricedSentence,
   servingsText,
   useRecipes,
   useRecipesStatus,

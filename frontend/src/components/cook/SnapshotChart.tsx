@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { CostHistoryItem, RecipeCost } from "../../api/recipes";
+import type { CostHistoryItem, RecipeCost } from "../../api/recipeCosts";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { SERIES_COLOURS } from "../../lib/palette";

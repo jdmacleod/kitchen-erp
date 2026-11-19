@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import type { CostBasis } from "../api/recipes";
+import type { CostBasis } from "../api/recipeCosts";
 import {
   adminUser,
   jsonResponse,

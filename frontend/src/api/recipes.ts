@@ -3,10 +3,11 @@
 // strings; nothing here turns them into numbers.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cmp, formatMoney, isZero, roundTo, stripZeros } from "../lib/decimal";
+import { cmp, isZero, roundTo, stripZeros } from "../lib/decimal";
 import { catalogKeys, qs, type IngredientCreateInput, type IngredientSummary } from "./catalog";
 import { api } from "./client";
 import { inboxKey } from "./inbox";
+import type { CostBasis, RecipeCostSummary } from "./recipeCosts";
 
 // --- types ------------------------------------------------------------------
 
@@ -15,20 +16,6 @@ export type MountState = "mounted" | "missing" | "empty" | "no_cook_files";
 export type QtyKind = "number" | "range" | "text" | "none";
 export type Resolution = "alias" | "manual" | "unmatched" | "negligible" | "ignored";
 export type Completeness = "complete" | "incomplete";
-/** "offers" (this week's, 18 X2) is a kitchen's view only, never a stored snapshot. */
-export type CostBasis = "latest" | "average" | "cheapest" | "offers";
-export type CostLineStatus = "priced" | "unpriced" | "unconvertible" | "unmapped" | "negligible";
-export type YieldMode = "auto" | "as_purchased" | "edible";
-
-export const COST_BASES: readonly CostBasis[] = ["latest", "average", "cheapest"];
-
-export const basisLabel: Record<CostBasis, string> = {
-  latest: "Latest",
-  average: "Average (90 days)",
-  cheapest: "Cheapest",
-  offers: "This week's offers",
-};
-
 export interface RecipeSummary {
   id: string;
   path: string;
@@ -39,21 +26,6 @@ export interface RecipeSummary {
   dirty: boolean;
   content_hash: string;
   last_indexed_at: string;
-}
-
-/** The latest-basis snapshot of a recipe's current content, for the list. */
-export interface RecipeCostSummary {
-  consumed_cost: string | null;
-  consumed_cost_high: string | null;
-  basket_cost: string | null;
-  basket_cost_high: string | null;
-  per_serving: string | null;
-  lines_priced: number;
-  lines_total: number;
-  /** Lines too small to cost (salt, water, "to taste"), left out of completeness (07, criterion 16). */
-  lines_negligible: number;
-  provisional: boolean;
-  computed_at: string;
 }
 
 export interface RecipeListItem extends RecipeSummary {
@@ -260,125 +232,6 @@ export interface IngredientRecipes {
   total: number;
 }
 
-/** The unit price a line was costed at, per lb, oz, fl oz or each as the server shows it (UI-3.10a). */
-export interface CostPriceUsed {
-  norm_unit_price: string;
-  norm_unit: string;
-  display_unit_price: string | null;
-  display_unit: string | null;
-  product_id: string | null;
-  product_name: string | null;
-  brand: string | null;
-  vendor_id: string | null;
-  vendor_name: string | null;
-  location_id: string | null;
-  location_name: string | null;
-  observation_id: string | null;
-  observed_at: string | null;
-  stale: boolean;
-  /** This week's offer priced it (the "offers" basis); an estimate when its size is the product's. */
-  flyer_offer_id?: string | null;
-  estimate?: boolean;
-}
-
-export interface CostQuantity {
-  canonical_qty: string;
-  canonical_qty_high: string | null;
-  canonical_unit: string;
-  display_qty: string | null;
-  display_qty_high: string | null;
-  display_unit: string | null;
-}
-
-export interface CostLine {
-  id: string;
-  line: RecipeIngredient;
-  yield_mode: YieldMode;
-  pinned: boolean;
-  status: CostLineStatus;
-  failure_code: string | null;
-  quantity: CostQuantity | null;
-  yield_applied: string | null;
-  /** Grossed up at 100% because the ingredient has no yield yet. */
-  yield_assumed: boolean;
-  bridge_kind: string | null;
-  bridge_confirmed: boolean | null;
-  price: CostPriceUsed | null;
-  consumed_cost: string | null;
-  consumed_cost_high: string | null;
-  basket_cost: string | null;
-  basket_cost_high: string | null;
-  packs: string | null;
-  packs_high: string | null;
-  /** USDA's value that would convert an unconvertible line, to take with "Use it". */
-  usda_offer?: UsdaLineOffer | null;
-  /** Unpriced, though a product of it has a posted price, which never costs a line. */
-  posted_price?: boolean;
-}
-
-export interface UsdaLineOffer {
-  ingredient_id: string;
-  kind: "density" | "measure";
-  density_portion_id: string | null;
-  measure_label: string | null;
-  /** "1 tsp = 2.3 g". */
-  text: string;
-}
-
-export interface CostTotals {
-  consumed_cost: string | null;
-  consumed_cost_high: string | null;
-  basket_cost: string | null;
-  basket_cost_high: string | null;
-  per_serving: string | null;
-}
-
-export interface CostCompleteness {
-  lines_total: number;
-  lines_priced: number;
-  lines_unpriced: number;
-  lines_unconvertible: number;
-  lines_unmapped: number;
-  lines_negligible: number;
-}
-
-export interface RecipeCost {
-  id: string;
-  recipe_id: string;
-  basis: CostBasis;
-  window_days: number | null;
-  min_quality: number | null;
-  content_hash: string;
-  head_commit: string | null;
-  provisional: boolean;
-  computed_at: string;
-  /** The kitchen whose prices alone were counted: the on-demand view (17, 4A); null for a snapshot. */
-  home_base_id: string | null;
-  stale_after_days: number;
-  totals: CostTotals;
-  completeness: CostCompleteness;
-  /** The share of the consumed cost resting on unconfirmed bridges, 0–1. */
-  unconfirmed_share: string;
-  lines: CostLine[];
-}
-
-export interface CostHistoryItem {
-  id: string;
-  content_hash: string;
-  head_commit: string | null;
-  computed_at: string;
-  window_days: number | null;
-  min_quality: number | null;
-  totals: CostTotals;
-  lines_priced: number;
-  lines_total: number;
-}
-
-export interface CostHistory {
-  basis: CostBasis;
-  items: CostHistoryItem[];
-}
-
 // --- keys and queries ---------------------------------------------------------
 
 export const recipeKeys = {
@@ -422,37 +275,6 @@ export function useRecipe(id: string | undefined) {
     queryKey: recipeKeys.recipe(id ?? ""),
     queryFn: () => api<Recipe>(`/recipes/${id}`),
     enabled: id !== undefined,
-  });
-}
-
-/**
- * The recipe's cost under a basis. A basis without a snapshot is computed on the
- * server inside this call, which is why the page says "Costing…" while it is pending.
- */
-/**
- * The recipe's cost under a basis. With `homeBaseId`, the kitchen filter (17, 4A;
- * UI-8.8): prices restricted to that kitchen's locations, computed on demand and
- * never snapshotted.
- */
-export function useRecipeCost(
-  id: string | undefined,
-  basis: CostBasis,
-  enabled = true,
-  homeBaseId = "",
-) {
-  return useQuery({
-    queryKey: recipeKeys.cost(id ?? "", basis, homeBaseId),
-    queryFn: () => api<RecipeCost>(`/recipes/${id}/cost${qs({ basis, home_base_id: homeBaseId })}`),
-    enabled: id !== undefined && enabled,
-  });
-}
-
-/** Committed snapshots under a basis, oldest first. */
-export function useRecipeCostHistory(id: string | undefined, basis: CostBasis, enabled = true) {
-  return useQuery({
-    queryKey: recipeKeys.history(id ?? "", basis),
-    queryFn: () => api<CostHistory>(`/recipes/${id}/cost/history${qs({ basis })}`),
-    enabled: id !== undefined && enabled,
   });
 }
 
@@ -628,31 +450,6 @@ export function resolvedSentence(rawName: string, decision: ResolveDecision): st
   return `Resolved '${rawName}' as ${name} in ${recipes}.`;
 }
 
-/** "8 of 10 lines priced". */
-export function pricedSentence(priced: number, total: number): string {
-  return `${priced} of ${total} ${total === 1 ? "line" : "lines"} priced`;
-}
-
-/**
- * The lines that count toward completeness and how many are priced: negligible
- * lines (salt, water, "to taste") are never costed, so they count for neither
- * (07, criterion 16). `partial` is true while any counted line has no cost, and
- * the totals are then only a floor.
- */
-export function known(c: { lines_priced: number; lines_total: number; lines_negligible: number }): {
-  priced: number;
-  counted: number;
-  partial: boolean;
-} {
-  const counted = Math.max(c.lines_total - c.lines_negligible, 0);
-  return { priced: c.lines_priced, counted, partial: c.lines_priced < counted };
-}
-
-/** A figure that is only a floor while lines are missing: "at least $20.90". */
-export function floorText(figure: string, partial: boolean): string {
-  return partial && figure !== "—" ? `at least ${figure}` : figure;
-}
-
 // The cooking fractions a recipe is written in; a quantity stored as 1/3 comes
 // back as 0.3333333333333333333333333333 and is shown as "1/3" again.
 const FRACTIONS: [string, string][] = [
@@ -695,17 +492,6 @@ export function servingsText(
   recipe: Pick<RecipeSummary, "servings" | "servings_text">,
 ): string | null {
   return recipe.servings_text ?? recipe.servings;
-}
-
-/** "$12.40", or "$12.40–13.10" for a range whose high differs; "—" with no figure. */
-export function formatCostRange(
-  low: string | null | undefined,
-  high: string | null | undefined,
-): string {
-  if (!low) return "—";
-  const lowText = formatMoney(low);
-  if (!high || cmp(low, high) === 0) return lowText;
-  return `${lowText}–${formatMoney(high).replace(/^\$/, "")}`;
 }
 
 /** "1.5 lb", or "1–2 lb" for a range; "—" when the server sent no display quantity. */
