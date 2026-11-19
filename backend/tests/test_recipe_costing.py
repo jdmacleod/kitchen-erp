@@ -184,6 +184,7 @@ async def test_19_all_lines_priced_exact_under_each_basis(
         "basket_cost": "12.0000",
         "basket_cost_high": "12.0000",
         "per_serving": "0.8250",
+        **NOTHING_POSTED,
     }
     assert latest["completeness"] == {
         "lines_total": 3,
@@ -192,6 +193,7 @@ async def test_19_all_lines_priced_exact_under_each_basis(
         "lines_unconvertible": 0,
         "lines_unmapped": 0,
         "lines_negligible": 0,
+        "lines_posted": 0,
     }
     assert latest["unconfirmed_share"] == "0.0000"
 
@@ -340,6 +342,7 @@ async def test_21_range_gives_low_and_high_and_text_quantity_is_negligible(
         "basket_cost": "4.0000",
         "basket_cost_high": "4.0000",
         "per_serving": None,
+        **NOTHING_POSTED,
     }
     c = body["completeness"]
     assert c["lines_total"] == 2 and c["lines_priced"] == 1 and c["lines_negligible"] == 1
@@ -377,6 +380,7 @@ async def test_22_unpriced_unconvertible_and_unmapped_are_counted_and_left_out_o
         "lines_unconvertible": 1,
         "lines_unmapped": 1,
         "lines_negligible": 0,
+        "lines_posted": 0,
     }
     assert body["totals"]["consumed_cost"] == "0.8000"
     assert body["totals"]["basket_cost"] == "4.0000"
@@ -469,8 +473,15 @@ async def test_27_a_pinned_line_is_costed_only_from_the_pin(
 
 # --- 27a: what never costs a line, and stale prices that do ---------------------------------
 
+NOTHING_POSTED = {
+    "posted_consumed_cost": None,
+    "posted_consumed_cost_high": None,
+    "posted_basket_cost": None,
+    "posted_basket_cost_high": None,
+}
 
-async def test_27a_posted_uncommitted_voided_and_inactive_prices_never_cost_a_line(
+
+async def test_27a_uncommitted_voided_and_inactive_prices_never_cost_a_line_and_real_beats_posted(
     admin_client: httpx.AsyncClient,
     recipes_repo: TempRepo,  # noqa: F811
     owner_conn: asyncpg.Connection,
@@ -480,7 +491,8 @@ async def test_27a_posted_uncommitted_voided_and_inactive_prices_never_cost_a_li
     bag = await make_product(admin_client, "Barley", "Barley bag", pack_qty="1", pack_unit="kg")
     # The only qualifying price is old: $4.00 a bag 100 days ago.
     stale = await shelf(admin_client, bag["id"], loc["id"], "4.00", observed_at=days_ago(100))
-    # Cheaper and newer, every one of them, and none qualifies.
+    # Cheaper and newer, every one of them, and none qualifies: the posted price is
+    # only a last resort, and a real price exists (#523, P1).
     await post_listing_price(loc, bag, "1.00")
     r = await admin_client.post(
         "/api/v1/purchases",
@@ -517,7 +529,7 @@ async def test_27a_posted_uncommitted_voided_and_inactive_prices_never_cost_a_li
     assert body["stale_after_days"] == 90
 
 
-async def test_27a_a_line_with_only_a_posted_price_is_unpriced_and_says_so(
+async def test_27a_a_line_with_only_a_posted_price_takes_it_marked_posted_and_uncounted(
     admin_client: httpx.AsyncClient,
     recipes_repo: TempRepo,  # noqa: F811
 ):
@@ -525,18 +537,29 @@ async def test_27a_a_line_with_only_a_posted_price_is_unpriced_and_says_so(
     bag = await make_product(admin_client, "Barley", "Barley bag", pack_qty="1", pack_unit="kg")
     recipe = await indexed(admin_client, recipes_repo, "harbor-bowl.cook", BOWL)
     line = lines_by_name(await cost(admin_client, recipe["id"]))["barley"]
-    assert line["status"] == "unpriced" and line["posted_price"] is False
+    assert line["status"] == "unpriced" and line["hint"] is None
 
-    await post_listing_price(loc, bag, "1.00")
+    posted = await post_listing_price(loc, bag, "1.00")
     await recost(recipe["id"])
-    line = lines_by_name(await cost(admin_client, recipe["id"]))["barley"]
-    # Still unpriced: a posted price never costs a line; the line only says it is there.
-    assert line["status"] == "unpriced" and line["posted_price"] is True
+    for basis in ("latest", "cheapest", "average"):
+        body = await cost(admin_client, recipe["id"], basis=basis)
+        line = lines_by_name(body)["barley"]
+        # The last resort (#523, P1): priced from the posted price, marked, uncounted.
+        assert line["status"] == "posted", basis
+        assert line["price"]["observation_id"] == posted, basis
+        assert line["consumed_cost"] == "0.2000", basis  # 200 g at $1.00 a kg
+        assert body["totals"]["consumed_cost"] is None, basis
+        assert body["totals"]["posted_consumed_cost"] == "0.2000", basis
+        assert body["completeness"]["lines_priced"] == 0, basis
+        assert body["completeness"]["lines_posted"] == 1, basis
+        assert body["posted_share"] == "1.0000", basis
+    history = (await admin_client.get(f"/api/v1/recipes/{recipe['id']}/cost/history")).json()
+    assert all(item["totals"]["consumed_cost"] is None for item in history["items"])
 
     await shelf(admin_client, bag["id"], loc["id"], "4.00")
     await recost(recipe["id"])
     line = lines_by_name(await cost(admin_client, recipe["id"]))["barley"]
-    assert line["status"] == "priced" and line["posted_price"] is False
+    assert line["status"] == "priced" and line["hint"] is None
 
 
 # --- 26: truncate and recompute-costs reproduces every figure --------------------------------
@@ -589,7 +612,7 @@ async def test_26_truncate_and_recompute_costs_reproduces_every_figure(
         text=True,
         check=True,
     )
-    assert "recomputed costs for 2 recipes" in run.stdout
+    assert "recomputed costs for 2 recipes; 0 lines on a posted price" in run.stdout
 
     snaps_after, lines_after = await _rows(owner_conn)
     assert snaps_after == snaps_before
@@ -751,9 +774,13 @@ async def test_the_list_carries_the_latest_cost_once_a_snapshot_exists(
         "basket_cost": "12.0000",
         "basket_cost_high": "12.0000",
         "per_serving": "0.8250",
+        **NOTHING_POSTED,
+        "posted_share": "0.0000",
         "lines_priced": 3,
         "lines_total": 3,
         "lines_negligible": 0,
+        "lines_posted": 0,
+        "posted_stale": False,
         "provisional": False,
         "computed_at": listed["computed_at"],
     }
@@ -793,6 +820,7 @@ async def test_history_lists_committed_snapshots_only(
         "totals": first["totals"],
         "lines_priced": 1,
         "lines_total": 1,
+        "lines_posted": 0,
     }
     # Committed, the new version joins the history at its own hash (criterion 24,
     # tested end to end in test_recipe_cost_triggers).

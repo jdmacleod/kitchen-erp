@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { formatAmount, known, lineText, type BodySection } from "../api/recipes";
+import { known } from "../api/recipeCosts";
+import { formatAmount, lineText, type BodySection } from "../api/recipes";
 import { adminUser, jsonResponse, mockApi, renderApp, type RouteHandler } from "./helpers";
 import {
   barleyStew,

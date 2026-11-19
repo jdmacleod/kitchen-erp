@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { formatPack, productTitle } from "../../api/catalog";
 import { bridgeFixLink, normStatusText, type NeedsBridgeItem } from "../../api/pricebook";
 import { Badge } from "../../components/catalog/fields";
+import { UnitSwitchOffer } from "../../components/catalog/UnitSwitch";
 import { useNotice } from "../../components/Notice";
 import { MlSwitchPanel } from "../../components/pricebook/MlSwitchPanel";
 import { QuickPackEditor } from "../../components/pricebook/QuickPackEditor";
@@ -229,6 +230,7 @@ function FixCell({
       <Link to={fix.to} className={`rounded-sm font-medium underline ${focusRing}`}>
         {fix.text}
       </Link>
+      {item.standard_switch ? <StandardSwitch item={item} /> : null}
       {item.switch_to_ml ? (
         <Button
           variant="secondary"
@@ -241,5 +243,25 @@ function FixCell({
         </Button>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * An ingredient whose standard entry is in another unit (issue 527): its one offer
+ * is Tidy the catalog's switch, linked to that row; skipped there, it is made here
+ * with the same accept and confirm.
+ */
+function StandardSwitch({ item }: { item: NeedsBridgeItem }) {
+  const sw = item.standard_switch;
+  if (!sw) return null;
+  const words = `Switch to the standard unit (${sw.unit})`;
+  if (sw.skipped) return <UnitSwitchOffer ingredientId={item.ingredient.id} label={words} />;
+  return (
+    <Link
+      to={`/catalog/cleanup#${encodeURIComponent(`cleanup-row-${sw.key}`)}`}
+      className={`rounded-sm font-medium underline ${focusRing}`}
+    >
+      {words}
+    </Link>
   );
 }

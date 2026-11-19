@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useLocation } from "react-router";
 import {
   useApplyCleanup,
   useCleanup,
@@ -7,8 +7,14 @@ import {
   type CleanupKind,
   type CleanupSuggestion,
 } from "../../api/catalogCleanup";
-import { errorMessage } from "../../api/client";
+import { errorMessage, isApiError } from "../../api/client";
+import {
+  acceptLabel,
+  Consequences,
+  resultSentence,
+} from "../../components/catalog/CleanupConsequences";
 import { Badge, inputClass } from "../../components/catalog/fields";
+import { UnitSwitchConfirm } from "../../components/catalog/UnitSwitch";
 import { CATEGORY_KEYS } from "../../components/CategoryChip";
 import { useNotice } from "../../components/Notice";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
@@ -54,6 +60,16 @@ const GROUPS: { kind: CleanupKind; title: string; hint: string }[] = [
     title: "Sold by the bunch",
     hint: "Produce whose name says bunch and whose pack doesn't. With the pack in bunches, its prices compare per bunch, and by weight once one bunch is weighed.",
   },
+  {
+    kind: "unit_mismatch",
+    title: "Units that differ from the standard list",
+    hint: "Ingredients linked to a standard name that measures them in another unit. Measures that still convert are rewritten in the new unit and the rest are dropped; each is listed before you switch, with the recipe lines it affects.",
+  },
+  {
+    kind: "product_move",
+    title: "Products under a broader ingredient",
+    hint: "A product whose name says it is a kind of its ingredient, such as bourbon under whiskey, moved to the ingredient for that kind. Recipe lines that would lose their price are listed first.",
+  },
 ];
 
 const label = (key: string) => key[0].toUpperCase() + key.slice(1);
@@ -72,6 +88,12 @@ export function CatalogCleanupPage() {
   usePageTitle("Tidy the catalog");
   const cleanup = useCleanup();
   const items = cleanup.data ?? [];
+  // A link from Needs a bridge names a row (issue 527): bring it into view once listed.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash || !cleanup.data) return;
+    document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: "center" });
+  }, [hash, cleanup.data]);
   return (
     <>
       <PageHeader
@@ -107,6 +129,58 @@ export function CatalogCleanupPage() {
   );
 }
 
+/**
+ * Accepting from a group: the chosen categories and the fingerprints shown go with
+ * the keys; one accept ends with its counts, or keeps its row with the server's
+ * words. A guessed unit switch confirms in a panel first (issue 527).
+ */
+function useAccept(rows: CleanupSuggestion[], chosen: Record<string, string>) {
+  const apply = useApplyCleanup();
+  const notice = useNotice();
+  // An accept that failed, kept on its row with the server's words (never an empty state).
+  const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
+  // The guessed unit switch whose confirm panel is open (issue 527).
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const accept = (keys: string[]) => {
+    setFailed(null);
+    const one = keys.length === 1 ? rows.find((r) => r.key === keys[0]) : undefined;
+    apply.mutate(
+      {
+        keys,
+        chosen: Object.fromEntries(keys.filter((k) => k in chosen).map((k) => [k, chosen[k]])),
+        fingerprints: Object.fromEntries(
+          rows
+            .filter((r) => keys.includes(r.key) && r.fingerprint)
+            .map((r) => [r.key, r.fingerprint ?? ""]),
+        ),
+      },
+      {
+        onSuccess: ({ applied, gone, held, results = [] }) => {
+          setConfirming(null);
+          if (one && applied === 0) {
+            setFailed({ key: one.key, message: "Nothing was applied; reload the list." });
+            return;
+          }
+          const result = one ? results.find((r) => r.key === one.key) : undefined;
+          notice.show({
+            tone: gone.length || held.length ? "info" : "success",
+            message:
+              one && result
+                ? `${resultSentence(one, result)}.`
+                : `Applied ${applied} ${applied === 1 ? "fix" : "fixes"}.${
+                    gone.length ? ` ${gone.length} had changed and were left.` : ""
+                  }${held.length ? ` ${held.length} to check one at a time.` : ""}`,
+          });
+        },
+        onError: (e) => {
+          if (one) setFailed({ key: one.key, message: rowError(e) });
+        },
+      },
+    );
+  };
+  return { apply, accept, failed, confirming, setConfirming };
+}
+
 function Group({
   kind,
   title,
@@ -121,9 +195,7 @@ function Group({
   const [shown, setShown] = useState(PAGE);
   // Categories the person chose instead of the guess, by suggestion key.
   const [chosen, setChosen] = useState<Record<string, string>>({});
-  const apply = useApplyCleanup();
   const skip = useSkipCleanup();
-  const notice = useNotice();
   const visible = rows.slice(0, shown);
   const valueOf = (s: CleanupSuggestion) => chosen[s.key] ?? s.value;
   const canAccept = (s: CleanupSuggestion) => s.ready || (s.choosable && valueOf(s) !== "");
@@ -132,23 +204,8 @@ function Group({
     s.confidence === "guess" && s.ready && !(s.key in chosen);
   const ready = visible.filter((s) => canAccept(s) && !isGuess(s)).map((s) => s.key);
   const guesses = rows.some(isGuess);
+  const { apply, accept, failed, confirming, setConfirming } = useAccept(rows, chosen);
   const busy = apply.isPending || skip.isPending;
-  const accept = (keys: string[]) =>
-    apply.mutate(
-      {
-        keys,
-        chosen: Object.fromEntries(keys.filter((k) => k in chosen).map((k) => [k, chosen[k]])),
-      },
-      {
-        onSuccess: ({ applied, gone, held }) =>
-          notice.show({
-            tone: gone.length || held.length ? "info" : "success",
-            message: `Applied ${applied} ${applied === 1 ? "fix" : "fixes"}.${
-              gone.length ? ` ${gone.length} had changed and were left.` : ""
-            }${held.length ? ` ${held.length} to check one at a time.` : ""}`,
-          }),
-      },
-    );
   const headingId = `cleanup-${kind}`;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -169,41 +226,46 @@ function Group({
           {kind === "category" ? ", or choose the category first" : ""}.
         </p>
       ) : null}
-      {apply.isError ? <Alert tone="error">{errorMessage(apply.error)}</Alert> : null}
+      {apply.isError && !failed ? <Alert tone="error">{errorMessage(apply.error)}</Alert> : null}
       {skip.isError ? <Alert tone="error">{errorMessage(skip.error)}</Alert> : null}
       <Card>
         <ul className="divide-y divide-neutral-200 dark:divide-neutral-800" aria-label={title}>
           {visible.map((s) => (
-            <li
+            <Row
               key={s.key}
-              className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-              data-testid="cleanup-row"
-            >
-              <Proposal
-                suggestion={s}
-                guess={isGuess(s)}
-                value={valueOf(s)}
-                disabled={busy}
-                onChoose={(value) => setChosen({ ...chosen, [s.key]: value })}
-              />
-              <div className="flex shrink-0 gap-2">
-                <Button
-                  disabled={busy || !canAccept(s)}
-                  onClick={() => accept([s.key])}
-                  aria-label={`Accept: ${s.subject}`}
-                >
-                  Accept
-                </Button>
-                <Button
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => skip.mutate([s.key])}
-                  aria-label={`Skip: ${s.subject}`}
-                >
-                  Skip
-                </Button>
-              </div>
-            </li>
+              suggestion={s}
+              guess={isGuess(s)}
+              value={valueOf(s)}
+              busy={busy}
+              acceptable={canAccept(s)}
+              applying={
+                apply.isPending &&
+                apply.variables.keys.length === 1 &&
+                apply.variables.keys[0] === s.key
+              }
+              error={failed?.key === s.key ? failed.message : null}
+              onChoose={(value) => setChosen({ ...chosen, [s.key]: value })}
+              onAccept={() =>
+                s.kind === "unit_mismatch" && s.confidence === "guess"
+                  ? setConfirming(confirming === s.key ? null : s.key)
+                  : accept([s.key])
+              }
+              confirm={
+                confirming === s.key ? (
+                  <UnitSwitchConfirm
+                    suggestion={s}
+                    pending={apply.isPending}
+                    error={failed?.key === s.key ? failed.message : null}
+                    onConfirm={() => accept([s.key])}
+                    onCancel={() => {
+                      setConfirming(null);
+                      document.getElementById(`accept-${s.key}`)?.focus();
+                    }}
+                  />
+                ) : null
+              }
+              onSkip={() => skip.mutate([s.key])}
+            />
           ))}
         </ul>
       </Card>
@@ -218,6 +280,67 @@ function Group({
   );
 }
 
+/** One suggestion: what it changes and why, then Accept (named for a move or switch) and Skip. */
+function Row({
+  suggestion: s,
+  guess,
+  value,
+  busy,
+  acceptable,
+  applying,
+  error,
+  onChoose,
+  onAccept,
+  onSkip,
+  confirm,
+}: {
+  suggestion: CleanupSuggestion;
+  guess: boolean;
+  value: string;
+  busy: boolean;
+  acceptable: boolean;
+  applying: boolean;
+  error: string | null;
+  onChoose: (value: string) => void;
+  onAccept: () => void;
+  onSkip: () => void;
+  confirm: ReactNode;
+}) {
+  return (
+    <li
+      id={`cleanup-row-${s.key}`}
+      className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+      data-testid="cleanup-row"
+    >
+      <Proposal
+        suggestion={s}
+        guess={guess}
+        value={value}
+        disabled={busy}
+        onChoose={onChoose}
+        error={confirm ? null : error}
+        confirm={confirm}
+      />
+      <div className="flex shrink-0 gap-2">
+        <Button
+          id={`accept-${s.key}`}
+          aria-expanded={
+            s.kind === "unit_mismatch" && s.confidence === "guess" ? Boolean(confirm) : undefined
+          }
+          disabled={busy || !acceptable}
+          onClick={onAccept}
+          aria-label={`${acceptLabel(s)}: ${s.subject}`}
+        >
+          {applying ? "Applying…" : acceptLabel(s)}
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={onSkip} aria-label={`Skip: ${s.subject}`}>
+          Skip
+        </Button>
+      </div>
+    </li>
+  );
+}
+
 /**
  * What a suggestion changes, from what, to what, and why. A guess carries a squash
  * "Check this" badge (spec 08: squash is for anything the system is guessing).
@@ -228,12 +351,16 @@ function Proposal({
   value,
   disabled,
   onChoose,
+  error,
+  confirm = null,
 }: {
   suggestion: CleanupSuggestion;
   guess: boolean;
   value: string;
   disabled: boolean;
   onChoose: (value: string) => void;
+  error: string | null;
+  confirm?: ReactNode;
 }) {
   return (
     <div className="min-w-0">
@@ -251,8 +378,20 @@ function Proposal({
         </p>
       )}
       <p className={`text-xs ${muted}`}>{s.reason}</p>
+      {confirm ?? <Consequences items={s.consequences ?? []} />}
+      {error ? (
+        <p role="alert" className="text-sm text-red-800 dark:text-red-300">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
+}
+
+/** The server's words for a failed accept, with its code; a changed one is listed again. */
+function rowError(e: unknown): string {
+  if (!isApiError(e)) return errorMessage(e);
+  return `${e.message} (${e.code})`;
 }
 
 /** A category suggestion's value, prefilled with the guess and open to change. */

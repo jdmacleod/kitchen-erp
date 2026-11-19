@@ -219,6 +219,8 @@ export interface NeedsBridgeItem {
   status: NormStatus;
   /** No density, but every product of this g ingredient is sold by volume (issue 358). */
   switch_to_ml?: boolean;
+  /** A standard entry in another unit (issue 527): Tidy the catalog's switch, or made here once skipped there. */
+  standard_switch?: { unit: string; key: string; skipped: boolean } | null;
   observation_count: number;
   /** Every current price of the product; the rest already compare. */
   price_count?: number;

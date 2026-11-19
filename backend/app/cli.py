@@ -897,12 +897,17 @@ def recompute_norms() -> None:
 @cli.command("recompute-costs")
 def recompute_costs() -> None:
     """Truncate the recipe cost tables and rebuild every recipe's latest snapshot (07, 3D)."""
+    from sqlalchemy import func, select
+
     from app.core.db import dispose_engine, get_sessionmaker
+    from app.models import RecipeCostSnapshot
     from app.services.recipe_costing import recompute_all
 
     async def _run() -> None:
         async with get_sessionmaker()() as db:
-            typer.echo(f"recomputed costs for {await recompute_all(db)} recipes")
+            n = await recompute_all(db)
+            posted = await db.scalar(select(func.sum(RecipeCostSnapshot.lines_posted)))
+            typer.echo(f"recomputed costs for {n} recipes; {posted or 0} lines on a posted price")
         await dispose_engine()
 
     asyncio.run(_run())

@@ -5,16 +5,19 @@ import { useCurrentOffers } from "../../api/flyerOffers";
 import {
   COST_BASES,
   basisLabel,
+  useRecipeCost,
+  useRecipeCostHistory,
+  type CostBasis,
+} from "../../api/recipeCosts";
+import {
   servingsText,
   useRecipe,
-  useRecipeCost,
   useDismissRelink,
-  useRecipeCostHistory,
   useRelinkRecipe,
-  type CostBasis,
   type Recipe,
 } from "../../api/recipes";
 import { CostTable, CostTotals } from "../../components/cook/CostTable";
+import { hasPosted } from "../../components/cook/posted";
 import { RecipeBadges } from "../../components/cook/RecipeBadges";
 import { RemoveRecipe } from "../../components/cook/RemoveRecipe";
 import { RenderedRecipe } from "../../components/cook/RenderedRecipe";
@@ -271,7 +274,7 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
                   Couldn&apos;t load the cost history: {errorMessage(history.error)}
                 </Alert>
               ) : (
-                <SnapshotChart points={points} />
+                <SnapshotChart points={points} posted={hasPosted(cost.data)} />
               )}
             </>
           )}

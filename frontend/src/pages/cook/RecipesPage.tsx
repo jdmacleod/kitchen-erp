@@ -7,12 +7,17 @@ import {
   formatCostRange,
   known,
   pricedSentence,
+  type RecipeCostSummary,
+} from "../../api/recipeCosts";
+import {
   servingsText,
   useRecipes,
   useRecipesStatus,
   type Completeness,
   type RecipeListItem,
 } from "../../api/recipes";
+import { Badge } from "../../components/catalog/fields";
+import { postedFigure } from "../../components/cook/posted";
 import { RecipeBadges } from "../../components/cook/RecipeBadges";
 import { RescanButton, useRescanWithNotice } from "../../components/cook/RescanButton";
 import { SegmentedControl } from "../../components/SegmentedControl";
@@ -272,6 +277,49 @@ function RecipeRows({ items }: { items: RecipeListItem[] }) {
   );
 }
 
+/**
+ * The list's cost: the counted total ("$4.10", "at least $4.10"), then the posted
+ * part beneath it ("+ $2.30 posted", with "some stale" when a posted price is),
+ * or "$6.40 posted" alone when nothing is counted. Nothing is said of a posted
+ * part a snapshot doesn't carry yet.
+ */
+function ListCost({ cost, partial }: { cost: RecipeCostSummary; partial: boolean }) {
+  const posted = postedFigure(
+    cost.posted_consumed_cost,
+    cost.posted_consumed_cost_high,
+    cost.lines_posted,
+  );
+  const stale = cost.posted_stale ? <Badge tone="warn">some stale</Badge> : null;
+  if (posted && !cost.consumed_cost) {
+    return (
+      <span className="flex flex-wrap items-center gap-x-2 lg:justify-end">
+        <span>
+          <span className="lg:hidden">Cost </span>
+          {posted} posted
+        </span>
+        {stale}
+      </span>
+    );
+  }
+  return (
+    <>
+      <span>
+        <span className="lg:hidden">Cost </span>
+        {floorText(formatCostRange(cost.consumed_cost, cost.consumed_cost_high), partial)}
+      </span>
+      {posted ? (
+        <span
+          className={`flex flex-wrap items-center gap-x-2 text-xs lg:justify-end ${muted}`}
+          data-testid="posted-part"
+        >
+          <span>+ {posted} posted</span>
+          {stale}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
 function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
   const cost = recipe.cost;
   const servings = servingsText(recipe);
@@ -311,13 +359,11 @@ function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
       <div role="cell" className="tabular-nums lg:text-right">
         {cost ? (
           <>
-            <span>
-              <span className="lg:hidden">Cost </span>
-              {floorText(formatCostRange(cost.consumed_cost, cost.consumed_cost_high), partial)}
-            </span>
+            <ListCost cost={cost} partial={partial} />
             {cost.per_serving ? (
               <span className={`block text-xs ${muted}`}>
-                {floorText(formatMoney(cost.per_serving), partial)} per serving
+                {floorText(formatMoney(cost.per_serving), partial)}{" "}
+                {cost.lines_posted ? "counted, per serving" : "per serving"}
               </span>
             ) : null}
             {cost.provisional ? (

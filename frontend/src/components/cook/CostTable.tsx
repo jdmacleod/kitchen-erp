@@ -4,18 +4,20 @@ import { productTitle } from "../../api/catalog";
 import { errorMessage, isApiError } from "../../api/client";
 import {
   formatCostRange,
-  formatQuantity,
   known,
-  lineText,
   pricedSentence,
+  type CostLine,
+  type RecipeCost,
+  type UsdaLineOffer,
+} from "../../api/recipeCosts";
+import {
+  formatQuantity,
+  lineText,
   resolvedSentence,
   useDeletePin,
   useSetPin,
-  type CostLine,
   type Recipe,
-  type RecipeCost,
   type RecipePin,
-  type UsdaLineOffer,
 } from "../../api/recipes";
 import { useUsdaDecision } from "../../api/usdaReview";
 import { formatMoney, isZero, mul, roundTo, stripZeros } from "../../lib/decimal";
@@ -26,6 +28,7 @@ import { formatUnitPrice } from "../pricebook/PriceAge";
 import { Alert, Button, focusRing, tapTarget } from "../ui";
 import { DecisionPicker, useNameDecision } from "./NameDecision";
 import { PinPicker } from "./PinPicker";
+import { hintText, PostedBadge, postedFigure, postedHeader } from "./posted";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 const squash = "text-amber-900 dark:text-amber-200";
@@ -50,6 +53,7 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
   const count = cost ? known(cost.completeness) : null;
   const partial = count?.partial ?? false;
   const totals = cost?.totals;
+  const posted = cost?.completeness.lines_posted;
   return (
     <section
       aria-label="Totals"
@@ -62,15 +66,21 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
           costing={costing}
           partial={partial}
           value={totals ? formatCostRange(totals.consumed_cost, totals.consumed_cost_high) : null}
+          posted={postedFigure(
+            totals?.posted_consumed_cost,
+            totals?.posted_consumed_cost_high,
+            posted,
+          )}
         />
         <Figure
           label="Basket"
           costing={costing}
           partial={partial}
           value={totals ? formatCostRange(totals.basket_cost, totals.basket_cost_high) : null}
+          posted={postedFigure(totals?.posted_basket_cost, totals?.posted_basket_cost_high, posted)}
         />
         <Figure
-          label="Per serving"
+          label={posted ? "Counted, per serving" : "Per serving"}
           costing={costing}
           partial={partial}
           value={totals?.per_serving ? formatMoney(totals.per_serving) : null}
@@ -98,31 +108,44 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
   );
 }
 
-/** One total; "at least" above it while lines are missing, since it is then a floor. */
+/**
+ * One total; "at least" above it while lines are missing, since it is then a
+ * floor. A posted part follows as "+ $2.30 posted"; with nothing counted, the
+ * figure is the posted part alone: "$6.40 posted".
+ */
 function Figure({
   label,
   value,
   costing,
   partial,
+  posted = null,
 }: {
   label: string;
   value: string | null;
   costing: boolean;
   partial: boolean;
+  posted?: string | null;
 }) {
+  const counted = value && value !== "—" ? value : null;
   let shown: ReactNode = value ?? "—";
   if (costing) shown = "Costing…";
-  else if (value && value !== "—" && partial)
+  else if (!counted && posted) shown = `${posted} posted`;
+  else if (counted && partial)
     shown = (
       <>
         <span className={`block text-xs font-normal ${squash}`}>at least</span>
-        {value}
+        {counted}
       </>
     );
   return (
     <div className="flex min-w-0 flex-col">
       <dt className={`text-xs ${muted}`}>{label}</dt>
-      <dd className="text-lg font-semibold tabular-nums">{shown}</dd>
+      <dd className="text-lg font-semibold tabular-nums">
+        {shown}
+        {!costing && counted && posted ? (
+          <span className={`block text-xs font-normal ${muted}`}>+ {posted} posted</span>
+        ) : null}
+      </dd>
     </div>
   );
 }
@@ -183,8 +206,14 @@ export function CostTable({ cost, recipe }: { cost: RecipeCost; recipe: Recipe }
       </p>
     );
   }
+  const posted = postedHeader(cost.lines);
   return (
     <div className="flex flex-col gap-2">
+      {posted ? (
+        <p className={`text-sm ${muted}`} data-testid="posted-header">
+          {posted}
+        </p>
+      ) : null}
       <div
         ref={table}
         role="table"
@@ -350,6 +379,7 @@ function PriceCell({ line, staleAfterDays }: { line: CostLine; staleAfterDays: n
             <span className="tabular-nums">
               {formatUnitPrice(price.display_unit_price, price.display_unit)}
             </span>
+            {line.status === "posted" ? <PostedBadge /> : null}
             {price.stale ? (
               <Badge tone="warn">
                 <span className="sr-only">older than {staleAfterDays} days: </span>stale
@@ -597,7 +627,7 @@ function RowWords({ line }: { line: CostLine }) {
     case "unpriced":
       return (
         <span className={muted}>
-          {line.posted_price ? "Only a posted price, not counted" : "No price yet"} ·{" "}
+          {hintText(line.hint) ?? "No price yet"} ·{" "}
           <Link to="/shop/shelf-prices" className={link}>
             Log a shelf price
           </Link>

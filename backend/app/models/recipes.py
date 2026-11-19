@@ -157,7 +157,7 @@ class RecipePin(UUIDPrimaryKey, Timestamped, Base):
 # --- 3D: cost snapshots, derived and rebuildable like price_norm ---------------------
 
 COST_BASES = ("latest", "average", "cheapest")
-COST_LINE_STATUSES = ("priced", "unpriced", "unconvertible", "unmapped", "negligible")
+COST_LINE_STATUSES = ("priced", "posted", "unpriced", "unconvertible", "unmapped", "negligible")
 
 
 class RecipeCostSnapshot(UUIDPrimaryKey, Base):
@@ -201,6 +201,16 @@ class RecipeCostSnapshot(UUIDPrimaryKey, Base):
     lines_negligible: Mapped[int] = mapped_column(Integer, nullable=False)
     # Fraction of consumed cost resting on unconfirmed bridges.
     unconfirmed_share: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
+    # Lines on a posted (listing) price, the last resort (07, 27a): their twins
+    # of the counted totals, never part of them, and their share of the whole.
+    posted_consumed_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    posted_consumed_cost_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    posted_basket_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    posted_basket_cost_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    posted_share: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False, server_default="0")
+    lines_posted: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # recipe_costing.COSTING_VERSION when computed; derived_versions rebuilds the rest.
+    costing_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     lines: Mapped[list[RecipeCostLine]] = relationship(
@@ -219,7 +229,7 @@ class RecipeCostLine(UUIDPrimaryKey, Base):
     __tablename__ = "recipe_cost_line"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('priced', 'unpriced', 'unconvertible', 'unmapped', 'negligible')",
+            "status IN ('priced', 'posted', 'unpriced', 'unconvertible', 'unmapped', 'negligible')",
             name="ck_recipe_cost_line_status",
         ),
         UniqueConstraint("snapshot_id", "recipe_ingredient_id", name="uq_recipe_cost_line"),

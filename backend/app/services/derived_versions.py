@@ -1,4 +1,4 @@
-"""Rebuild derived prices when unit conversion changes (04, 2A; #437).
+"""Rebuild derived prices when unit conversion or recipe costing changes (04, 2A; #437).
 
 Every ``price_norm`` row records the ``CONVERT_VERSION`` that produced it. When
 a deploy brings a new version, the stored conversions and the recipe cost
@@ -8,16 +8,22 @@ derived data (non-negotiable 5): a rebuild loses nothing.
 The rebuild is one transaction: stopped part way, it leaves the stale rows as
 they were, and the next ``kerp migrate`` finds them again. Snapshots are
 recomputed in place, so the cost history of earlier recipe versions is kept.
+
+Each snapshot also records the ``recipe_costing.COSTING_VERSION`` that computed
+it. A snapshot of a recipe's current content with another version is rebuilt
+the same way; snapshots of earlier content are facts of their time and are left
+alone, so the rebuild settles: a second ``kerp migrate`` finds nothing.
 """
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import PriceNorm, Recipe
+from app.models import PriceNorm, Recipe, RecipeCostSnapshot
 from app.services import pricebook, recipe_costing
 from app.units.convert import CONVERT_VERSION
 
@@ -33,11 +39,28 @@ async def stale_versions(db: AsyncSession) -> list[str]:
     return list(rows.scalars())
 
 
+async def costing_stale(db: AsyncSession) -> list[uuid.UUID]:
+    """The recipes whose snapshot of their current content has another costing version."""
+    rows = await db.execute(
+        select(Recipe.id, Recipe.path)
+        .join(
+            RecipeCostSnapshot,
+            (RecipeCostSnapshot.recipe_id == Recipe.id)
+            & (RecipeCostSnapshot.content_hash == Recipe.content_hash),
+        )
+        .where(RecipeCostSnapshot.costing_version != recipe_costing.COSTING_VERSION)
+        .distinct()
+        .order_by(Recipe.path)
+    )
+    return [recipe_id for recipe_id, _ in rows]
+
+
 async def refresh_if_stale(db: AsyncSession, say: Callable[[str], object]) -> bool:
-    """Rebuild ``price_norm`` and then the recipe costs when any row is stale."""
+    """Rebuild ``price_norm`` and then the recipe costs when any row is stale, or
+    only the recipe costs computed under another costing version."""
     stale = await stale_versions(db)
     if not stale:
-        return False
+        return await _refresh_costing(db, say)
     say(
         f"Unit conversion is now version {CONVERT_VERSION}; prices were normalized "
         f"with version {', '.join(stale)}. Rebuilding prices and recipe costs…"
@@ -51,4 +74,19 @@ async def refresh_if_stale(db: AsyncSession, say: Callable[[str], object]) -> bo
         await recipe_costing.recompute_recipe_core(db, recipe_id)
     await db.commit()
     say(f"  recomputed {norms} normalizations and costs for {len(recipes)} recipes")
+    return True
+
+
+async def _refresh_costing(db: AsyncSession, say: Callable[[str], object]) -> bool:
+    recipes = await costing_stale(db)
+    if not recipes:
+        return False
+    say(
+        f"Recipe costing is now version {recipe_costing.COSTING_VERSION}. "
+        f"Rebuilding costs for {len(recipes)} recipes…"
+    )
+    for recipe_id in recipes:
+        await recipe_costing.recompute_recipe_core(db, recipe_id)
+    await db.commit()
+    say(f"  recomputed costs for {len(recipes)} recipes")
     return True

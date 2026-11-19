@@ -15,6 +15,7 @@ import {
   ChooseStandard,
   IngredientMergePanel,
 } from "../../components/catalog/IngredientMergePanel";
+import { UnitSwitchOffer } from "../../components/catalog/UnitSwitch";
 import { CategoryChip } from "../../components/CategoryChip";
 import { useNotice } from "../../components/Notice";
 import {
@@ -51,6 +52,8 @@ export function IngredientLinkPage() {
   const notice = useNotice();
   const [announcement, setAnnouncement] = useState("");
   const [tally, setTally] = useState<Tally>({ linked: 0, renamed: 0, merged: 0, skipped: 0 });
+  // An ingredient just linked to a standard name in another unit: offer the switch (issue 527).
+  const [unitFollowUp, setUnitFollowUp] = useState<FollowUp | null>(null);
   // The row whose first action takes focus once the list refreshes ("" = the empty state).
   const focusNext = useRef<string | null>(null);
   const toReview = page.data?.to_review ?? [];
@@ -68,6 +71,7 @@ export function IngredientLinkPage() {
   }, [page.isFetching, page.data]);
 
   const decided = (row: LinkRow, kind: Decision, message: string) => {
+    setUnitFollowUp(unitFollowUpOf(row, kind));
     const index = toReview.findIndex((r) => r.id === row.id);
     const rest = toReview.filter((r) => r.id !== row.id);
     const next = rest[Math.min(index, rest.length - 1)];
@@ -110,6 +114,7 @@ export function IngredientLinkPage() {
         {announcement}
       </p>
       <IngredientDuplicatePairs />
+      {unitFollowUp ? <UnitFollowUp {...unitFollowUp} /> : null}
       {page.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…
@@ -166,6 +171,31 @@ export function IngredientLinkPage() {
         </>
       )}
     </>
+  );
+}
+
+interface FollowUp {
+  id: string;
+  name: string;
+}
+
+/** A row just linked to a standard name measured in another unit (issue 527). */
+function unitFollowUpOf(row: LinkRow, kind: Decision): FollowUp | null {
+  const entry = row.suggestion;
+  if (kind !== "linked" || !entry || entry.canonical_unit === row.canonical_unit) return null;
+  return { id: row.id, name: entry.name };
+}
+
+/** "Linked whiskey." and the unit switch as a follow-up: one click, or a confirm first. */
+function UnitFollowUp({ id, name }: FollowUp) {
+  return (
+    <section
+      aria-label={`Unit of ${name}`}
+      className="mb-3 rounded-md border border-neutral-300 p-3 dark:border-neutral-700"
+    >
+      <p className="text-sm font-medium">Linked {name}.</p>
+      <UnitSwitchOffer ingredientId={id} />
+    </section>
   );
 }
 

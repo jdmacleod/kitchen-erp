@@ -249,6 +249,7 @@ async def test_list_filters_run_on_the_server(
         "lines_unconvertible": 0,
         "lines_unmapped": 0,
         "lines_negligible": 0,
+        "lines_posted": 0,
     }
     assert await titles({"completeness": "complete"}) == ["Brine pot", "Zenith soup"]
     assert "Zenith soup" not in await titles({"completeness": "incomplete"})

@@ -136,13 +136,18 @@ recipe_cost_snapshot(                          -- household-wide (Phase 3 review
   lines_total INT, lines_priced INT, lines_unpriced INT, lines_unconvertible INT,
   lines_unmapped INT, lines_negligible INT,
   unconfirmed_share NUMERIC(5,4),              -- fraction of consumed cost resting on unconfirmed bridges
+  posted_consumed_cost NUMERIC(12,4)?, posted_consumed_cost_high NUMERIC(12,4)?,  -- #523 (0070)
+  posted_basket_cost NUMERIC(12,4)?, posted_basket_cost_high NUMERIC(12,4)?,
+  posted_share NUMERIC(5,4) DEFAULT 0,         -- posted consumed cost / (counted + posted)
+  lines_posted INT DEFAULT 0,                  -- not in lines_priced
+  costing_version INT DEFAULT 0,               -- recipe_costing.COSTING_VERSION that computed it
   computed_at,
   UNIQUE (recipe_id, content_hash, basis, window_days, min_quality)
 )
 
 recipe_cost_line(                              -- one per recipe_ingredient at snapshot time
   id, snapshot_id FK, recipe_ingredient_id FK,
-  status CHECK IN (priced, unpriced, unconvertible, unmapped, negligible),
+  status CHECK IN (priced, posted, unpriced, unconvertible, unmapped, negligible),
   canonical_qty NUMERIC?, canonical_qty_high NUMERIC?,   -- _high columns: Phase 3 build, 2026-10-10
   canonical_unit?, yield_applied NUMERIC(5,4)?,
   product_id FK?, observation_id FK?, norm_unit_price NUMERIC(14,6)?,
@@ -390,11 +395,37 @@ most recent qualifying normalized price), `average` over `window_days`, or
 `average`, whose window is `stale_after_days` (default 90), and `cheapest`
 (Phase 3 review, 2026-10-09). Qualifying follows the price book views exactly
 (Phase 3 review, 2026-10-09): a non-voided observation with a successful
-normalization, from a committed purchase or a shelf price, never a posted
-(listing) price, from an active location, of a product that fulfils the line's
-ingredient with at least `min_quality` when given, and of the pinned product
-when the line has a pin. A price older than `stale_after_days` is used and
-reported stale on its line, never filtered out and never silently preferred.
+normalization, from a committed purchase or a shelf price, from an active
+location, of a product that fulfils the line's ingredient with at least
+`min_quality` when given, and of the pinned product when the line has a pin. A
+price older than `stale_after_days` is used and reported stale on its line,
+never filtered out and never silently preferred.
+
+A posted (listing) price is the last resort (ruling on #523, 2026-11-17, P1–P3).
+A line that no real price prices (and, under the per-kitchen `offers` basis, no
+offer either: an offer first, then real prices, then posted) takes the latest
+posted price of its ingredient, whatever the basis; `window_days` does not
+apply to it. It qualifies as a real price does but for its source: scoped to
+the kitchen in a kitchen's view, of at least `min_quality`, and under a pin of
+the pinned product only (a pin with no posted price of its own leaves the line
+unpriced). An old one is used and marked stale. The line's status is `posted`;
+it keeps its observation, product, quantities and costs as a priced line does.
+Posted lines are never counted: `consumed_cost`, `basket_cost`, `per_serving`,
+`unconfirmed_share` and the history leave them out, and `lines_priced` does not
+count them, so a recipe resting on one is not complete. The snapshot carries
+their twins, `posted_consumed_cost` (and `posted_consumed_cost_high`) and
+`posted_basket_cost` (and its high), with `lines_posted` and `posted_share`,
+the posted consumed cost over the counted plus posted, from the low ends. An API
+client that wants counted figures only reads `consumed_cost`, `basket_cost`
+and `per_serving`; the posted fields are separate. Costing runs in two passes:
+real prices first, then one posted query for the ingredients of the lines left
+unpriced.
+
+An unpriced line says why when a price is in sight: another product has a
+posted price (a pinned line, "Only {product} has a posted price; change the pin
+to use it"), the only posted price is at a store outside this kitchen (in a
+kitchen's view: active stores and products, any kitchen, any quality), or the
+pinned product now sits under another ingredient (#525).
 
 Costing is household-wide: every qualifying price counts, whichever kitchen's
 vendors recorded it (Phase 3 review, 2026-10-09, settling UI review T8 of
@@ -439,6 +470,21 @@ and `provisional = dirty`. Snapshots are recomputed for a recipe when its hash
 changes, when an alias or pin affecting it changes, and when a bridge or price
 that a priced line used changes; `kerp recompute-costs` rebuilds all.
 
+Each snapshot records the `recipe_costing.COSTING_VERSION` that computed it
+(version 1: posted prices, #523). `kerp migrate` recomputes, in one
+transaction, the snapshots of each recipe's current content whose version
+differs, as it does for a new `CONVERT_VERSION`; history snapshots of earlier
+content are facts of their time and stay as they were, so a second migrate
+recomputes nothing. Deploying a costing change is `make up` (which migrates);
+nothing truncates the cost tables. Migration 0070's downgrade turns posted
+lines back into unpriced ones and adds `lines_posted` to `lines_unpriced`, so
+every kept snapshot still adds up; after a downgrade, run `kerp
+recompute-costs` if the older figures are wanted at once.
+
+Deploy runbook for a costing change: run the read-only measuring script (ids
+and counts only) for a before dump, `make up`, then the script again, and post
+counts only on the issues.
+
 ### Acceptance criteria
 
 19. For a synthetic recipe whose lines all have confirmed bridges and prices,
@@ -460,9 +506,11 @@ that a priced line used changes; `kerp recompute-costs` rebuilds all.
     reproduces every figure.
 27. A pinned line is costed only from the pinned product, and reports unpriced
     when that product has no qualifying price even if others do.
-27a. A posted price, a price from an uncommitted purchase, a voided price and a
-    price at an inactive location never cost a line; a price older than
-    `stale_after_days` does, and its line reports it stale.
+27a. A price from an uncommitted purchase, a voided price and a price at an
+    inactive location never cost a line; a price older than
+    `stale_after_days` does, and its line reports it stale. A posted price
+    costs a line only as the last resort, marked `posted`, never in the
+    counted totals or history (amended by the ruling on #523, 2026-11-17).
 
 ## 3E — Recipe screens
 

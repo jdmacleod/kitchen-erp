@@ -4,7 +4,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import type { RecipeCost } from "../api/recipes";
+import type { RecipeCost } from "../api/recipeCosts";
 import { homeBase, homeBaseId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RouteHandler } from "./helpers";
 import {

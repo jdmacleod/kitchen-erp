@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CostLine } from "../api/recipes";
+import type { CostLine } from "../api/recipeCosts";
 import { conversionFix } from "../components/cook/CostTable";
 import { stewCost } from "./recipe-fixtures";
 

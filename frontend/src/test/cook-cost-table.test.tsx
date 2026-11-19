@@ -2,7 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { IngredientMatch } from "../api/catalog";
-import type { BodySection, Recipe, RecipeCost, RecipePin } from "../api/recipes";
+import type { CostLine, RecipeCost } from "../api/recipeCosts";
+import type { BodySection, Recipe, RecipePin } from "../api/recipes";
 import {
   adminUser,
   errorResponse,
@@ -411,20 +412,42 @@ describe("the rendered recipe (10, Rendered recipe)", () => {
 });
 
 describe("an unpriced line's words (UI-7.9)", () => {
-  it("says when its only price is a posted one, which is not counted", async () => {
-    mount({
-      "GET /recipes/r-barley/cost": recomputed(() => {
-        const cost = stewCost();
-        return {
-          ...cost,
-          lines: cost.lines.map((l) =>
-            l.status === "unpriced" ? { ...l, posted_price: true } : l,
-          ),
-        };
-      }),
+  const hinted = (hint: CostLine["hint"]) =>
+    recomputed(() => {
+      const cost = stewCost();
+      return {
+        ...cost,
+        lines: cost.lines.map((l) => (l.status === "unpriced" ? { ...l, hint } : l)),
+      };
     });
+
+  it.each([
+    [
+      {
+        kind: "posted_other_product",
+        product_name: "Kelp flakes",
+        store_name: null,
+        ingredient_name: null,
+      },
+      "Only Kelp flakes has a posted price; change the pin to use it ·",
+    ],
+    [
+      {
+        kind: "posted_outside_kitchen",
+        product_name: null,
+        store_name: "Cove Grocer",
+        ingredient_name: null,
+      },
+      "A posted price exists at Cove Grocer, outside this kitchen ·",
+    ],
+    [
+      { kind: "pin_moved", product_name: "Kelp flakes", store_name: null, ingredient_name: "nori" },
+      "Pinned to Kelp flakes, now filed under nori ·",
+    ],
+  ] as const)("says why a price in sight doesn't cost it: %o", async (hint, words) => {
+    mount({ "GET /recipes/r-barley/cost": hinted({ ...hint }) });
     const kelp = (await costRows())[3];
-    expect(kelp).toHaveTextContent("Only a posted price, not counted ·");
+    expect(kelp).toHaveTextContent(words);
     expect(kelp).not.toHaveTextContent("No price yet");
     expect(within(kelp).getByRole("link", { name: "Log a shelf price" })).toBeInTheDocument();
   });

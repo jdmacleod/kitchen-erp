@@ -40,11 +40,13 @@ _SIX = Decimal("0.000001")
 # prices) applying at an active location, normalized, settled, active product.
 # ``home_base_id`` keeps only the rows applying at that kitchen's locations (17,
 # 4A, ruling L3): a chain price still counts at the kitchen's branch of the chain.
+# The posted pass (#523, P1) reads offer_applicable_all for listing prices only,
+# under the same scoping; both views report a merged product under its survivor.
 _QUALIFYING_SQL = """
     SELECT DISTINCT ON (oa.observation_id)
            oa.observation_id, oa.product_id, p.ingredient_id, oa.observed_at,
            oa.norm_unit_price, oa.norm_unit
-    FROM offer_applicable oa
+    FROM {view} oa
     JOIN product p ON p.id = oa.product_id AND p.active
     JOIN vendor_location vl ON vl.id = oa.applies_to_location_id
     LEFT JOIN purchase_line pl ON pl.id = oa.purchase_line_id
@@ -56,8 +58,13 @@ _QUALIFYING_SQL = """
            OR coalesce(p.quality_rating, 0) >= CAST(:min_quality AS integer))
       AND (CAST(:home_base_id AS uuid) IS NULL
            OR vl.home_base_id = CAST(:home_base_id AS uuid))
+      {posted}
     ORDER BY oa.observation_id
 """
+_REAL_SQL = _QUALIFYING_SQL.format(view="offer_applicable", posted="")
+_POSTED_SQL = _QUALIFYING_SQL.format(
+    view="offer_applicable_all", posted="AND oa.source = 'listing'"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,12 +105,16 @@ async def qualifying_prices(
     ingredient_ids: set[uuid.UUID],
     min_quality: int | None,
     home_base_id: uuid.UUID | None = None,
+    *,
+    posted: bool = False,
 ) -> dict[uuid.UUID, list[QualifyingPrice]]:
+    """The prices that qualify for the ingredients, by ingredient: real ones, or
+    with ``posted`` the posted (listing) prices alone, under the same scoping."""
     out: dict[uuid.UUID, list[QualifyingPrice]] = {}
     if not ingredient_ids:
         return out
     rows = await db.execute(
-        text(_QUALIFYING_SQL),
+        text(_POSTED_SQL if posted else _REAL_SQL),
         {
             "ids": [str(i) for i in ingredient_ids],
             "min_quality": min_quality,
@@ -230,7 +241,11 @@ async def cost_line(
     window_days: int | None,
     now: datetime,
     offers: list[OfferPrice] | None = None,
+    posted: list[QualifyingPrice] | None = None,
 ) -> LineCost:
+    """The line's cost. ``posted`` are the posted prices of its ingredient, the last
+    resort (#523, P1–P3): the latest one, whatever the basis, prices a line that
+    nothing else does, of the pinned product only when there is a pin."""
     out = LineCost(recipe_ingredient_id=line.id, status="negligible")
     if line.negligible or line.resolution == "ignored" or line.qty is None:
         return out
@@ -239,10 +254,7 @@ async def cost_line(
         return out
     out.canonical_unit = ingredient.canonical_unit
 
-    candidates = prices
-    if pin_product_id is not None:
-        candidates = [p for p in prices if p.product_id == pin_product_id]
-    candidates = [p for p in candidates if p.norm_unit == ingredient.canonical_unit]
+    candidates = _usable(prices, ingredient.canonical_unit, pin_product_id)
     offer = _best_offer(offers, ingredient.canonical_unit, pin_product_id)
     # An offer prices the line in place of any price-book price (the "offers" basis).
     chosen = (
@@ -250,6 +262,12 @@ async def cost_line(
         if offer is not None
         else choose(candidates, "latest" if basis == "offers" else basis, window_days, now)
     )
+    on_posted = False
+    if offer is None and chosen is None and posted:
+        chosen = choose(
+            _usable(posted, ingredient.canonical_unit, pin_product_id), "latest", None, now
+        )
+        on_posted = chosen is not None
 
     product_id = (
         offer.product_id if offer else chosen.observation.product_id if chosen else pin_product_id
@@ -294,7 +312,7 @@ async def cost_line(
     if chosen is None and offer is None:
         out.status = "unpriced"
         return out
-    out.status = "priced"
+    out.status = "posted" if on_posted else "priced"
     out.offer = offer
     out.observation_id = chosen.observation.observation_id if chosen else None
     price = offer.unit_price if offer else chosen.norm_unit_price  # type: ignore[union-attr]
@@ -302,6 +320,18 @@ async def cost_line(
     pack_qty = offer.pack_qty if offer else _pack_canonical_qty(product, context)
     _price_line(out, price, pack_qty, qty_low, qty_high)
     return out
+
+
+def _usable(
+    prices: list[QualifyingPrice], canonical_unit: str, pin_product_id: uuid.UUID | None
+) -> list[QualifyingPrice]:
+    """The prices a line can take: in its canonical unit, of the pinned product if any."""
+    return [
+        p
+        for p in prices
+        if p.norm_unit == canonical_unit
+        and (pin_product_id is None or p.product_id == pin_product_id)
+    ]
 
 
 def _best_offer(

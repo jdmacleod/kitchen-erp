@@ -1,12 +1,10 @@
 // Invented recipes for the Cook tests (07, Fixtures): no real dish, vendor or price.
 
 import type { ProductListItem } from "../api/catalog";
+import type { CostHistory, CostLine, RecipeCost } from "../api/recipeCosts";
 import type {
   BodySection,
-  CostHistory,
-  CostLine,
   Recipe,
-  RecipeCost,
   RecipeIngredient,
   RecipeListItem,
   RecipesStatus,
@@ -206,7 +204,7 @@ export const stewRecipe: Recipe = {
   body: null,
 };
 
-function costLine(line: RecipeIngredient, over: Partial<CostLine>): CostLine {
+export function costLine(line: RecipeIngredient, over: Partial<CostLine>): CostLine {
   return {
     id: `c-${line.id}`,
     line,

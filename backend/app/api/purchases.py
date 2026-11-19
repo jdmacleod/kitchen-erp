@@ -222,6 +222,7 @@ async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
     liquids = await unit_switch.volume_only(
         db, {r["ingredient_id"] for r in rows if r["status"] == "no_density"}
     )
+    standard = await unit_switch.standard_switches(db, {r["ingredient_id"] for r in rows})
     items = [
         NeedsBridgeItem(
             ingredient={
@@ -247,7 +248,14 @@ async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
             observation_count=r["observation_count"],
             price_count=r["price_count"],
             latest_observed_at=r["latest_observed_at"],
-            switch_to_ml=r["status"] == "no_density" and r["ingredient_id"] in liquids,
+            switch_to_ml=r["status"] == "no_density"
+            and r["ingredient_id"] in liquids
+            and r["ingredient_id"] not in standard,
+            standard_switch=(
+                {"unit": v[0], "key": v[1], "skipped": v[2]}
+                if (v := standard.get(r["ingredient_id"]))
+                else None
+            ),
         )
         for r in rows
     ]

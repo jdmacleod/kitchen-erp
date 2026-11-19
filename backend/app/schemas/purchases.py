@@ -117,6 +117,15 @@ class NeedsBridgeItem(ApiModel):
     # "no density" for an ingredient in g whose products are all sold by volume:
     # measuring it in ml would bridge it without a density (issue 358).
     switch_to_ml: bool = False
+    # An ingredient with a standard entry in another unit (#527): its one offer is
+    # Tidy the catalog's switch, found by ``key``, or made here once ``skipped`` there.
+    standard_switch: StandardSwitchOut | None = None
+
+
+class StandardSwitchOut(ApiModel):
+    unit: str
+    key: str
+    skipped: bool
 
 
 class NeedsBridgeList(ApiModel):

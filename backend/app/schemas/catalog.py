@@ -130,6 +130,8 @@ class IngredientUpdate(ApiModel):
     # A change of unit removes measures stored in the old one, which no longer
     # mean anything; without this flag such a change is refused (issue 358).
     drop_measures: bool = Field(default=False, exclude=True)
+    # With drop_measures, the measures to keep: a unit switch rewrites them (#527).
+    keep_measures: set[uuid.UUID] | None = Field(default=None, exclude=True)
 
     _category = field_validator("category")(categories.stored)
 
