@@ -4215,7 +4215,7 @@ ingredients:
     perishability: shelf_stable
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
-    spellings: ["dry curaçao", "curaçao"]
+    spellings: ["dry curaçao", "curaçao", "curaçao orange liqueur"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: orange-extract
     name: "orange extract"
@@ -4889,6 +4889,7 @@ ingredients:
     perishability: shelf_stable
     keep: {room: 365, fridge: 3, freezer: null}
     unit: ml
+    spellings: ["prosecco sparkling wine"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: provolone
     name: "provolone"

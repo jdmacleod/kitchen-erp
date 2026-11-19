@@ -2094,6 +2094,14 @@
             "title": "Chosen",
             "type": "object"
           },
+          "fingerprints": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 200,
+            "title": "Fingerprints",
+            "type": "object"
+          },
           "keys": {
             "items": {
               "type": "string"
@@ -2130,6 +2138,13 @@
             },
             "title": "Held",
             "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/CleanupResultOut"
+            },
+            "title": "Results",
+            "type": "array"
           }
         },
         "required": [
@@ -2138,6 +2153,33 @@
           "held"
         ],
         "title": "CleanupApplyOut",
+        "type": "object"
+      },
+      "CleanupConsequenceOut": {
+        "additionalProperties": false,
+        "description": "One thing an accept changes beyond its row: a recipe line (linked by its recipe)\nthat loses its price or can no longer convert, or a measure dropped or rewritten.",
+        "properties": {
+          "recipe_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipe Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CleanupConsequenceOut",
         "type": "object"
       },
       "CleanupKeysIn": {
@@ -2176,6 +2218,41 @@
         "title": "CleanupOut",
         "type": "object"
       },
+      "CleanupResultOut": {
+        "additionalProperties": false,
+        "description": "What one accepted move or unit switch changed.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "measures_dropped": {
+            "default": 0,
+            "title": "Measures Dropped",
+            "type": "integer"
+          },
+          "measures_rewritten": {
+            "default": 0,
+            "title": "Measures Rewritten",
+            "type": "integer"
+          },
+          "prices_renormalized": {
+            "default": 0,
+            "title": "Prices Renormalized",
+            "type": "integer"
+          },
+          "recipes_recomputed": {
+            "default": 0,
+            "title": "Recipes Recomputed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "CleanupResultOut",
+        "type": "object"
+      },
       "CleanupSuggestionOut": {
         "additionalProperties": false,
         "description": "One proposed fix (#349): what it changes, from what, to what, and why.",
@@ -2200,6 +2277,18 @@
             "title": "Confidence",
             "type": "string"
           },
+          "consequences": {
+            "items": {
+              "$ref": "#/components/schemas/CleanupConsequenceOut"
+            },
+            "title": "Consequences",
+            "type": "array"
+          },
+          "fingerprint": {
+            "default": "",
+            "title": "Fingerprint",
+            "type": "string"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -2212,7 +2301,9 @@
               "ingredient_merge",
               "product_name",
               "product_brand",
-              "product_pack"
+              "product_pack",
+              "product_move",
+              "unit_mismatch"
             ],
             "title": "Kind",
             "type": "string"
@@ -24458,7 +24549,7 @@
     },
     "/api/v1/catalog/cleanup/apply": {
       "post": {
-        "description": "Apply the suggestions named, as they stand now, with any category chosen instead.\nA guess named with others is held back: guesses are accepted one at a time.",
+        "description": "Apply the suggestions named, as they stand now, with any category chosen instead.\nA guess named with others is held back: guesses are accepted one at a time. One\nkey named alone that is gone or skipped is 409 ``cleanup_gone``; a move or unit\nswitch whose fingerprint differs from the one sent is 409 ``cleanup_changed``,\nwith the suggestion as it is now.",
         "operationId": "apply_suggestions_api_v1_catalog_cleanup_apply_post",
         "requestBody": {
           "content": {
