@@ -50,8 +50,16 @@ export function snapshotPoints(
  * snapshot under the current basis, by date, with the provisional one drawn hollow
  * and labelled. Hidden with fewer than two points (D22). One series, from the chart
  * palette; decimal strings become numbers here only to place marks on the canvas.
+ * Lines on a posted price are never in it; a caption says so while any are.
  */
-export function SnapshotChart({ points }: { points: SnapshotPoint[] }) {
+export function SnapshotChart({
+  points,
+  posted = false,
+}: {
+  points: SnapshotPoint[];
+  /** The current cost has lines on a posted price, which the chart leaves out. */
+  posted?: boolean;
+}) {
   const chart = useMemo(() => {
     if (points.length < 2) return null;
     const times = points.map((p) => new Date(p.computed_at).getTime());
@@ -146,6 +154,15 @@ export function SnapshotChart({ points }: { points: SnapshotPoint[] }) {
           </g>
         ))}
       </svg>
+      <ChartLegend stroke={stroke} posted={posted} />
+    </figure>
+  );
+}
+
+/** The marks' key, and the caption that posted lines are left out. */
+function ChartLegend({ stroke, posted }: { stroke: string; posted: boolean }) {
+  return (
+    <>
       <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600 dark:text-neutral-400">
         <span className="inline-flex items-center gap-1.5">
           <svg width="14" height="14" aria-hidden="true">
@@ -160,6 +177,12 @@ export function SnapshotChart({ points }: { points: SnapshotPoint[] }) {
           provisional
         </span>
       </p>
-    </figure>
+      {posted ? (
+        <p className="text-xs text-neutral-600 dark:text-neutral-400" data-testid="chart-posted">
+          Counted lines only. Lines on a posted price join the chart when a receipt or shelf price
+          arrives.
+        </p>
+      ) : null}
+    </>
   );
 }

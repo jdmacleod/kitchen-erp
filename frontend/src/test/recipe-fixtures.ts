@@ -204,7 +204,7 @@ export const stewRecipe: Recipe = {
   body: null,
 };
 
-function costLine(line: RecipeIngredient, over: Partial<CostLine>): CostLine {
+export function costLine(line: RecipeIngredient, over: Partial<CostLine>): CostLine {
   return {
     id: `c-${line.id}`,
     line,

@@ -10,7 +10,8 @@ import { recipeKeys, type RecipeIngredient } from "./recipes";
 
 /** "offers" (this week's, 18 X2) is a kitchen's view only, never a stored snapshot. */
 export type CostBasis = "latest" | "average" | "cheapest" | "offers";
-export type CostLineStatus = "priced" | "unpriced" | "unconvertible" | "unmapped" | "negligible";
+export type CostLineStatus =
+  "priced" | "posted" | "unpriced" | "unconvertible" | "unmapped" | "negligible";
 export type YieldMode = "auto" | "as_purchased" | "edible";
 
 export const COST_BASES: readonly CostBasis[] = ["latest", "average", "cheapest"];
@@ -29,10 +30,20 @@ export interface RecipeCostSummary {
   basket_cost: string | null;
   basket_cost_high: string | null;
   per_serving: string | null;
+  /** The posted twins: lines on a store's listed price, never in the counted figures (issue 523). */
+  posted_consumed_cost?: string | null;
+  posted_consumed_cost_high?: string | null;
+  posted_basket_cost?: string | null;
+  posted_basket_cost_high?: string | null;
+  posted_share?: string;
   lines_priced: number;
   lines_total: number;
   /** Lines too small to cost (salt, water, "to taste"), left out of completeness (07, criterion 16). */
   lines_negligible: number;
+  /** Lines on a posted price; not in lines_priced. */
+  lines_posted?: number;
+  /** Some posted price a line rests on is stale. */
+  posted_stale?: boolean;
   provisional: boolean;
   computed_at: string;
 }
@@ -89,8 +100,15 @@ export interface CostLine {
   packs_high: string | null;
   /** USDA's value that would convert an unconvertible line, to take with "Use it". */
   usda_offer?: UsdaLineOffer | null;
-  /** Unpriced, though a product of it has a posted price, which never costs a line. */
-  posted_price?: boolean;
+  /** Why an unpriced line has no price though one is in sight. */
+  hint?: CostLineHint | null;
+}
+
+export interface CostLineHint {
+  kind: "posted_other_product" | "posted_outside_kitchen" | "pin_moved";
+  product_name: string | null;
+  store_name: string | null;
+  ingredient_name: string | null;
 }
 
 export interface UsdaLineOffer {
@@ -102,12 +120,17 @@ export interface UsdaLineOffer {
   text: string;
 }
 
+/** The counted totals; lines on a posted price are only in the posted twins. */
 export interface CostTotals {
   consumed_cost: string | null;
   consumed_cost_high: string | null;
   basket_cost: string | null;
   basket_cost_high: string | null;
   per_serving: string | null;
+  posted_consumed_cost?: string | null;
+  posted_consumed_cost_high?: string | null;
+  posted_basket_cost?: string | null;
+  posted_basket_cost_high?: string | null;
 }
 
 export interface CostCompleteness {
@@ -117,6 +140,7 @@ export interface CostCompleteness {
   lines_unconvertible: number;
   lines_unmapped: number;
   lines_negligible: number;
+  lines_posted?: number;
 }
 
 export interface RecipeCost {
@@ -136,6 +160,7 @@ export interface RecipeCost {
   completeness: CostCompleteness;
   /** The share of the consumed cost resting on unconfirmed bridges, 0–1. */
   unconfirmed_share: string;
+  posted_share?: string;
   lines: CostLine[];
 }
 
@@ -149,6 +174,7 @@ export interface CostHistoryItem {
   totals: CostTotals;
   lines_priced: number;
   lines_total: number;
+  lines_posted?: number;
 }
 
 export interface CostHistory {

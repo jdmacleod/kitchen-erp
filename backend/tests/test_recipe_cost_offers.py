@@ -19,6 +19,7 @@ from tests.recipes_helpers import TempRepo, recipes_repo  # noqa: F401
 from tests.test_flyer_offers import THURSDAY
 from tests.test_flyer_reads import learned
 from tests.test_flyers import candidate, queue, report, requests, seed, source_row
+from tests.test_posted_prices import post_listing_price
 from tests.test_products_helper import helper  # noqa: F401  the stub helper's client
 from tests.test_recipe_costing import BOWL, cost, days_ago, indexed, lines_by_name
 
@@ -142,3 +143,33 @@ async def test_a_price_by_the_pound_is_never_an_estimate(
     price = lines_by_name(await offers_cost(admin_client, harbor))["barley"]["price"]
     assert price["flyer_offer_id"] is not None
     assert price["estimate"] is False
+
+
+async def test_under_offers_a_line_takes_an_offer_then_a_real_price_then_a_posted_one(
+    admin_client,
+    helper,  # noqa: F811
+    owner_conn,
+    harbor,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    # Neither an offer nor a real price for oats: the posted price, the last resort (#523, P3).
+    oats = await make_product(admin_client, "Oats", "Oats bag", pack_qty="1", pack_unit="kg")
+    await post_listing_price(harbor["market"], oats, "1.00")
+    await post_listing_price(harbor["market"], harbor["barley"], "1.00")
+    repo_text = "---\ntitle: Harbor oat bowl\n---\n\nServe @barley{200%g} with @oats{100%g}.\n"
+    recipe = await indexed(admin_client, recipes_repo, "harbor-oats.cook", repo_text)
+    kitchen = harbor["kitchen"]["id"]
+
+    lines = lines_by_name(
+        await cost(admin_client, recipe["id"], basis="offers", home_base_id=kitchen)
+    )
+    assert lines["barley"]["status"] == "priced", "the real shelf price beats the posted one"
+    assert lines["barley"]["price"]["norm_unit_price"] == "0.004000"
+    assert lines["oats"]["status"] == "posted" and lines["oats"]["consumed_cost"] == "0.1000"
+
+    await circular(helper, owner_conn, harbor, size_qty="1", size_unit="kg")
+    lines = lines_by_name(
+        await cost(admin_client, recipe["id"], basis="offers", home_base_id=kitchen)
+    )
+    assert lines["barley"]["status"] == "priced" and lines["barley"]["price"]["flyer_offer_id"]
+    assert lines["oats"]["status"] == "posted"

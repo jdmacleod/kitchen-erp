@@ -81,3 +81,47 @@ async def test_a_rebuild_stopped_part_way_is_found_again(
         )
         == 3
     )
+
+
+async def test_migrate_recomputes_current_costs_of_an_older_costing_version_once(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+    owner_conn: asyncpg.Connection,
+):
+    await porridge_pantry(admin_client)
+    await indexed(admin_client, recipes_repo, "harbor-porridge.cook", PORRIDGE)
+    recipes_repo.edit("harbor-porridge.cook", "\nFinish with @dates{2}.\n")
+    recipes_repo.commit("more dates")
+    r = await admin_client.post("/api/v1/recipes/rescan")
+    assert r.status_code == 200, r.text
+    # A deploy that brings costing version 1 finds snapshots version 0 wrote.
+    await owner_conn.execute("UPDATE recipe_cost_snapshot SET costing_version = 0")
+    before = {
+        r["id"]: (r["computed_at"], r["current"])
+        for r in await owner_conn.fetch(
+            "SELECT s.id, s.computed_at, s.content_hash = r.content_hash AS current"
+            " FROM recipe_cost_snapshot s JOIN recipe r ON r.id = s.recipe_id"
+        )
+    }
+    assert sorted(current for _, current in before.values()) == [False, True]
+    await dispose_engine()
+
+    out = _kerp("migrate")
+    assert f"Recipe costing is now version {recipe_costing.COSTING_VERSION}" in out
+    assert "recomputed costs for 1 recipes" in out
+    after = {
+        r["id"]: (r["computed_at"], r["costing_version"])
+        for r in await owner_conn.fetch(
+            "SELECT id, computed_at, costing_version FROM recipe_cost_snapshot"
+        )
+    }
+    for snapshot_id, (computed_at, current) in before.items():
+        if current:  # the current content is rebuilt and stamped
+            assert after[snapshot_id][0] > computed_at
+            assert after[snapshot_id][1] == recipe_costing.COSTING_VERSION
+        else:  # history is a fact of its time, left alone
+            assert after[snapshot_id] == (computed_at, 0)
+
+    out = _kerp("migrate")  # it settles: nothing is rebuilt the second time
+    assert "Rebuilding" not in out
+    await dispose_engine()

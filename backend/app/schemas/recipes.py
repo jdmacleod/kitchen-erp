@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
@@ -338,7 +339,7 @@ class RecipePinIn(ApiModel):
 
 # "offers" (this week's, 18 X2) is the per-kitchen view's only: it needs home_base_id.
 CostBasis = Literal["latest", "average", "cheapest", "offers"]
-CostLineStatus = Literal["priced", "unpriced", "unconvertible", "unmapped", "negligible"]
+CostLineStatus = Literal["priced", "posted", "unpriced", "unconvertible", "unmapped", "negligible"]
 YieldMode = Literal["auto", "as_purchased", "edible"]
 
 
@@ -391,6 +392,21 @@ class UsdaLineOffer(ApiModel):
     text: str  # "1 tsp = 2.3 g"
 
 
+class CostLineHint(ApiModel):
+    """Why an unpriced line has no price though one is in sight (#522, #523, #525).
+
+    ``posted_other_product``: the line is pinned, the pin has no posted price and
+    ``product_name`` has. ``posted_outside_kitchen``: in a kitchen's view, the
+    only posted price is at ``store_name``, outside it. ``pin_moved``: the pinned
+    ``product_name`` is now filed under ``ingredient_name``.
+    """
+
+    kind: Literal["posted_other_product", "posted_outside_kitchen", "pin_moved"]
+    product_name: str | None = None
+    store_name: str | None = None
+    ingredient_name: str | None = None
+
+
 class CostLineOut(ApiModel):
     id: uuid.UUID
     line: RecipeIngredientOut
@@ -411,16 +427,22 @@ class CostLineOut(ApiModel):
     packs: DecimalStr | None
     packs_high: DecimalStr | None
     usda_offer: UsdaLineOffer | None = None
-    # Unpriced, though a product of it has a posted price, which never costs a line.
-    posted_price: bool = False
+    hint: CostLineHint | None = None
 
 
 class CostTotals(ApiModel):
+    """The counted totals; lines on a posted price are in the ``posted_*`` twins
+    only, and ``per_serving`` is counted only (07, 3D)."""
+
     consumed_cost: DecimalStr | None
     consumed_cost_high: DecimalStr | None
     basket_cost: DecimalStr | None
     basket_cost_high: DecimalStr | None
     per_serving: DecimalStr | None
+    posted_consumed_cost: DecimalStr | None = None
+    posted_consumed_cost_high: DecimalStr | None = None
+    posted_basket_cost: DecimalStr | None = None
+    posted_basket_cost_high: DecimalStr | None = None
 
 
 class CostCompleteness(ApiModel):
@@ -430,6 +452,7 @@ class CostCompleteness(ApiModel):
     lines_unconvertible: int
     lines_unmapped: int
     lines_negligible: int
+    lines_posted: int = 0  # not in lines_priced
 
 
 class RecipeCostOut(ApiModel):
@@ -449,6 +472,8 @@ class RecipeCostOut(ApiModel):
     totals: CostTotals
     completeness: CostCompleteness
     unconfirmed_share: DecimalStr
+    # The posted consumed cost's share of counted plus posted, 0–1.
+    posted_share: DecimalStr = Decimal(0)
     lines: list[CostLineOut]
 
 
@@ -462,6 +487,7 @@ class CostHistoryItem(ApiModel):
     totals: CostTotals
     lines_priced: int
     lines_total: int
+    lines_posted: int = 0
 
 
 class CostHistoryOut(ApiModel):
@@ -477,9 +503,17 @@ class RecipeCostSummary(ApiModel):
     basket_cost: DecimalStr | None
     basket_cost_high: DecimalStr | None
     per_serving: DecimalStr | None
+    posted_consumed_cost: DecimalStr | None = None
+    posted_consumed_cost_high: DecimalStr | None = None
+    posted_basket_cost: DecimalStr | None = None
+    posted_basket_cost_high: DecimalStr | None = None
+    posted_share: DecimalStr = Decimal(0)
     lines_priced: int
     lines_total: int
     lines_negligible: int  # left out of completeness (07, criterion 16)
+    lines_posted: int = 0  # not in lines_priced, so a recipe with one is incomplete
+    # Some line rests on a posted price older than stale_after_days ("some stale").
+    posted_stale: bool = False
     provisional: bool
     computed_at: datetime
 

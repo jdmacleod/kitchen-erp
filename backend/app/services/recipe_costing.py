@@ -4,12 +4,19 @@ A snapshot costs one recipe at one content hash under one basis: ``latest``
 (each line's most recent qualifying normalized price), ``average`` over a
 window (default ``stale_after_days``), or ``cheapest``. Qualifying follows the
 price book views exactly: a non-voided observation with a successful
-normalization, from a committed purchase or a shelf price, never a posted
-(listing) price, applying at an active location, of an active product that
+normalization, from a committed purchase or a shelf price, applying at an
+active location, of an active product that
 fulfils the line's ingredient (merged products report under their survivor, as
 ``price_current`` does), of at least ``min_quality`` when given, and of the
 pinned product when the line has a pin. A price older than ``stale_after_days``
 is used and reported stale at read time, never filtered out.
+
+A posted (listing) price is the last resort (#523, ruling P1–P3; 07, 27a): a
+line no real price (or, under ``offers``, no offer) prices takes the latest
+posted price of its ingredient, or of its pinned product, whatever the basis
+and window. It qualifies as a real price does but for its source, is marked
+``posted``, and is left out of the counted totals and of history; the
+snapshot carries it in the ``posted_*`` twins and ``posted_share``.
 
 Each line's quantity converts to the ingredient's canonical unit through
 ``convert`` with the pinned or chosen product's context: its density override
@@ -33,7 +40,8 @@ book's rounding rule; an average unit price to six, as ``price_norm`` stores one
 Statuses, in the order they are decided: ``negligible`` (no quantity, text
 quantity, the negligible list, or a name marked not an ingredient),
 ``unmapped`` (no ingredient), ``unconvertible`` (``convert`` failed, with its
-code), ``unpriced`` (nothing qualifies), ``priced``.
+code), ``unpriced`` (nothing qualifies), ``posted`` (only a posted price),
+``priced``.
 
 The recompute triggers (hash, alias, pin, bridge and price changes) live in
 ``services/recipe_cost_triggers``; ``recompute_recipe_core`` is the entry point
@@ -77,6 +85,11 @@ from app.services.recipe_cost_lines import (
     cost_line,
     qualifying_prices,
 )
+
+# Stamped on each snapshot computed; a snapshot of a recipe's current content with
+# another version is rebuilt by ``kerp migrate`` (``derived_versions``). 1: posted
+# prices as the last resort (#523).
+COSTING_VERSION = 1
 
 # --- the snapshot -----------------------------------------------------------------------
 
@@ -153,10 +166,19 @@ class Costing:
     basket_cost_high: Decimal | None = None
     per_serving: Decimal | None = None
     unconfirmed_share: Decimal = Decimal(0)
+    posted_consumed_cost: Decimal | None = None
+    posted_consumed_cost_high: Decimal | None = None
+    posted_basket_cost: Decimal | None = None
+    posted_basket_cost_high: Decimal | None = None
+    posted_share: Decimal = Decimal(0)
 
     @property
     def priced(self) -> list[LineCost]:
         return [c for c in self.costs if c.status == "priced"]
+
+    @property
+    def posted(self) -> list[LineCost]:
+        return [c for c in self.costs if c.status == "posted"]
 
     def count(self, status: str) -> int:
         return sum(c.status == status for c in self.costs)
@@ -250,35 +272,56 @@ async def cost_recipe(
         assert home_base_id is not None  # noqa: S101  the API refuses it without a kitchen
         offers = await kitchen_offers(db, home_base_id, min_quality)
 
-    costs: list[LineCost] = []
-    for line in lines:
-        ingredient = ingredients.get(line.ingredient_id) if line.ingredient_id else None
-        costs.append(
-            await cost_line(
-                db,
-                line,
-                ingredient,
-                prices.get(ingredient.id, []) if ingredient is not None else [],
-                pins.get(line.name_norm),
-                basis,
-                window,
-                now,
-                offers.get(ingredient.id, []) if ingredient is not None else None,
-            )
+    def ingredient_of(line: RecipeIngredient) -> Ingredient | None:
+        return ingredients.get(line.ingredient_id) if line.ingredient_id else None
+
+    async def cost(line: RecipeIngredient, posted: dict | None = None) -> LineCost:
+        ingredient = ingredient_of(line)
+        return await cost_line(
+            db,
+            line,
+            ingredient,
+            prices.get(ingredient.id, []) if ingredient is not None else [],
+            pins.get(line.name_norm),
+            basis,
+            window,
+            now,
+            offers.get(ingredient.id, []) if ingredient is not None else None,
+            posted.get(ingredient.id) if posted and ingredient is not None else None,
         )
 
+    costs = [await cost(line) for line in lines]
+    # The posted pass: one query for the ingredients of the lines nothing priced,
+    # then those lines again against their posted prices (#523, P1).
+    unpriced = [i for i, c in enumerate(costs) if c.status == "unpriced"]
+    wanted = {ing.id for i in unpriced if (ing := ingredient_of(lines[i])) is not None}
+    if wanted:
+        posted = await qualifying_prices(db, wanted, min_quality, home_base_id, posted=True)
+        for i in unpriced:
+            costs[i] = await cost(lines[i], posted)
+
     out = Costing(lines=list(lines), costs=costs, computed_at=now)
-    priced = out.priced
+    _total(out, recipe)
+    return out
+
+
+def _sums(lines: list[LineCost]) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    """Consumed and basket cost, each low and high, of the lines."""
+    return (
+        sum((c.consumed_cost for c in lines), Decimal(0)),
+        sum((c.consumed_cost_high or c.consumed_cost for c in lines), Decimal(0)),
+        sum((c.basket_cost for c in lines), Decimal(0)),
+        sum((c.basket_cost_high or c.basket_cost for c in lines), Decimal(0)),
+    )
+
+
+def _total(out: Costing, recipe: Recipe) -> None:
+    """The counted totals from the priced lines, and their posted twins."""
+    priced, posted = out.priced, out.posted
+    consumed = Decimal(0)
     if priced:
-        consumed = sum((c.consumed_cost for c in priced), Decimal(0))
+        consumed, out.consumed_cost_high, out.basket_cost, out.basket_cost_high = _sums(priced)
         out.consumed_cost = consumed
-        out.consumed_cost_high = sum(
-            (c.consumed_cost_high or c.consumed_cost for c in priced), Decimal(0)
-        )
-        out.basket_cost = sum((c.basket_cost for c in priced), Decimal(0))
-        out.basket_cost_high = sum(
-            (c.basket_cost_high or c.basket_cost for c in priced), Decimal(0)
-        )
         if recipe.servings is not None and recipe.servings > 0:
             out.per_serving = _money(_CTX.divide(consumed, recipe.servings))
         if consumed > 0:
@@ -286,7 +329,18 @@ async def cost_recipe(
             out.unconfirmed_share = _CTX.divide(unconfirmed, consumed).quantize(
                 _FOUR, rounding=ROUND_HALF_EVEN
             )
-    return out
+    if posted:
+        (
+            out.posted_consumed_cost,
+            out.posted_consumed_cost_high,
+            out.posted_basket_cost,
+            out.posted_basket_cost_high,
+        ) = _sums(posted)
+        whole = consumed + out.posted_consumed_cost
+        if whole > 0:
+            out.posted_share = _CTX.divide(out.posted_consumed_cost, whole).quantize(
+                _FOUR, rounding=ROUND_HALF_EVEN
+            )
 
 
 def _fill_snapshot(snapshot: RecipeCostSnapshot, recipe: Recipe, costing: Costing) -> None:
@@ -303,7 +357,14 @@ def _fill_snapshot(snapshot: RecipeCostSnapshot, recipe: Recipe, costing: Costin
     snapshot.lines_unconvertible = costing.count("unconvertible")
     snapshot.lines_unmapped = costing.count("unmapped")
     snapshot.lines_negligible = costing.count("negligible")
+    snapshot.lines_posted = len(costing.posted)
     snapshot.unconfirmed_share = costing.unconfirmed_share
+    snapshot.posted_consumed_cost = costing.posted_consumed_cost
+    snapshot.posted_consumed_cost_high = costing.posted_consumed_cost_high
+    snapshot.posted_basket_cost = costing.posted_basket_cost
+    snapshot.posted_basket_cost_high = costing.posted_basket_cost_high
+    snapshot.posted_share = costing.posted_share
+    snapshot.costing_version = COSTING_VERSION
     snapshot.computed_at = costing.computed_at
 
 

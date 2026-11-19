@@ -17,11 +17,19 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Ingredient, Recipe, RecipeCostLine, RecipeCostSnapshot, RecipeIngredient
+from app.models import (
+    Ingredient,
+    PriceObservation,
+    Recipe,
+    RecipeCostLine,
+    RecipeCostSnapshot,
+    RecipeIngredient,
+)
 from app.schemas.recipes import (
     CostCompleteness,
     CostHistoryItem,
     CostHistoryOut,
+    CostLineHint,
     CostLineOut,
     CostPriceUsed,
     CostQuantity,
@@ -55,43 +63,73 @@ _PRODUCTS_SQL = """
     SELECT id AS product_id, name AS product_name, brand
     FROM product WHERE id = ANY(CAST(:ids AS uuid[]))
 """
-# The active products with a posted (listing) price normalized to their
-# ingredient's unit: such a price never costs a line (07, criterion 27a), but an
-# unpriced line says it is there, so the price seen on the product isn't a mystery.
+# Posted (listing) prices of the unpriced lines' ingredients, at any active store
+# of any kitchen, for the hints: an unpriced line says a posted price is in sight
+# (#522, #523). Only the kitchen scoping and min_quality are dropped (M3), so a
+# closed store or an inactive product is never named.
 _POSTED_SQL = """
-    SELECT DISTINCT p.id AS product_id, p.ingredient_id
-    FROM price_observation o
-    JOIN product op ON op.id = o.product_id
-    JOIN product p ON p.id = coalesce(op.merged_into, o.product_id) AND p.active
+    SELECT DISTINCT ON (oa.product_id, v.id, vl.home_base_id)
+           oa.product_id, p.name AS product_name, p.ingredient_id,
+           v.name AS store_name, vl.home_base_id
+    FROM offer_applicable_all oa
+    JOIN product p ON p.id = oa.product_id AND p.active
     JOIN ingredient i ON i.id = p.ingredient_id
-    JOIN price_norm n ON n.observation_id = o.id
-         AND n.norm_unit_price IS NOT NULL AND n.norm_unit = i.canonical_unit
-    WHERE o.source = 'listing'
+    JOIN vendor_location vl ON vl.id = oa.applies_to_location_id
+    JOIN vendor v ON v.id = vl.vendor_id AND v.active
+    WHERE oa.source = 'listing'
+      AND oa.norm_unit_price IS NOT NULL AND oa.norm_unit = i.canonical_unit
       AND p.ingredient_id = ANY(CAST(:ids AS uuid[]))
-      AND NOT EXISTS (SELECT 1 FROM price_observation_void v WHERE v.observation_id = o.id)
+    ORDER BY oa.product_id, v.id, vl.home_base_id, oa.observed_at DESC
+"""
+_PINNED_SQL = """
+    SELECT p.id AS product_id, p.name AS product_name, p.ingredient_id, i.name AS ingredient_name
+    FROM product p JOIN ingredient i ON i.id = p.ingredient_id
+    WHERE p.id = ANY(CAST(:ids AS uuid[]))
 """
 
 
-async def _posted(
-    db: AsyncSession, rows: list[tuple[RecipeCostLine, RecipeIngredient]], pins: dict[str, Any]
-) -> set[uuid.UUID]:
-    """The unpriced lines whose ingredient, or pinned product, has a posted price."""
+async def _hints(
+    db: AsyncSession,
+    rows: list[tuple[RecipeCostLine, RecipeIngredient]],
+    pins: dict[str, uuid.UUID],
+    home_base_id: uuid.UUID | None,
+) -> dict[uuid.UUID, CostLineHint]:
+    """Each unpriced line's hint, when it has one (``CostLineHint``)."""
     unpriced = [(line, ri) for line, ri in rows if line.status == "unpriced" and ri.ingredient_id]
     if not unpriced:
-        return set()
+        return {}
+    pinned_ids = [str(pins[ri.name_norm]) for _, ri in unpriced if ri.name_norm in pins]
+    pinned = {}
+    if pinned_ids:
+        found = await db.execute(text(_PINNED_SQL), {"ids": pinned_ids})
+        pinned = {r["product_id"]: r for r in found.mappings()}
     ids = [str(i) for i in {ri.ingredient_id for _, ri in unpriced}]
-    found = (await db.execute(text(_POSTED_SQL), {"ids": ids})).all()
-    by_ingredient = {ingredient_id for _, ingredient_id in found}
-    products = {product_id for product_id, _ in found}
-    return {
-        line.id
-        for line, ri in unpriced
-        if (
-            pins[ri.name_norm] in products
-            if ri.name_norm in pins
-            else ri.ingredient_id in by_ingredient
-        )
-    }
+    posted = list((await db.execute(text(_POSTED_SQL), {"ids": ids})).mappings())
+    out: dict[uuid.UUID, CostLineHint] = {}
+    for line, ri in unpriced:
+        pin = pins.get(ri.name_norm)
+        moved = pinned.get(pin) if pin is not None else None
+        if moved is not None and moved["ingredient_id"] != ri.ingredient_id:
+            out[line.id] = CostLineHint(
+                kind="pin_moved",
+                product_name=moved["product_name"],
+                ingredient_name=moved["ingredient_name"],
+            )
+            continue
+        mine = [r for r in posted if r["ingredient_id"] == ri.ingredient_id]
+        here = [r for r in mine if home_base_id is None or r["home_base_id"] == home_base_id]
+        others = [r for r in here if r["product_id"] != pin]
+        if pin is not None and others and not any(r["product_id"] == pin for r in here):
+            out[line.id] = CostLineHint(
+                kind="posted_other_product", product_name=others[0]["product_name"]
+            )
+            continue
+        away = [r for r in mine if pin is None or r["product_id"] == pin]
+        if home_base_id is not None and away and not here:
+            out[line.id] = CostLineHint(
+                kind="posted_outside_kitchen", store_name=away[0]["store_name"]
+            )
+    return out
 
 
 async def _used(db: AsyncSession, lines: list[RecipeCostLine]) -> dict[uuid.UUID, dict[str, Any]]:
@@ -122,6 +160,10 @@ def _totals(row: RecipeCostSnapshot) -> CostTotals:
         basket_cost=row.basket_cost,
         basket_cost_high=row.basket_cost_high,
         per_serving=row.per_serving,
+        posted_consumed_cost=row.posted_consumed_cost,
+        posted_consumed_cost_high=row.posted_consumed_cost_high,
+        posted_basket_cost=row.posted_basket_cost,
+        posted_basket_cost_high=row.posted_basket_cost_high,
     )
 
 
@@ -256,7 +298,7 @@ async def cost_out(
         names = dict(found.all())
     masses = await unit_display.mass_units(db, ingredient_ids)
     pins = await _pins(db, snapshot.recipe_id)
-    posted = await _posted(db, rows, pins)
+    hints = await _hints(db, rows, pins, home_base_id)
     now = datetime.now(UTC)
     stale = stale_after_days()
     lines: list[CostLineOut] = []
@@ -285,7 +327,7 @@ async def cost_out(
                 packs=line.packs,
                 packs_high=line.packs_high,
                 usda_offer=_offer_out(offers.get(line.id)),
-                posted_price=line.id in posted,
+                hint=hints.get(line.id),
             )
         )
     return RecipeCostOut(
@@ -308,8 +350,10 @@ async def cost_out(
             lines_unconvertible=snapshot.lines_unconvertible,
             lines_unmapped=snapshot.lines_unmapped,
             lines_negligible=snapshot.lines_negligible,
+            lines_posted=snapshot.lines_posted,
         ),
         unconfirmed_share=snapshot.unconfirmed_share,
+        posted_share=snapshot.posted_share,
         lines=lines,
     )
 
@@ -344,6 +388,7 @@ async def history_out(db: AsyncSession, recipe: Recipe, basis: str) -> CostHisto
                 totals=_totals(row),
                 lines_priced=row.lines_priced,
                 lines_total=row.lines_total,
+                lines_posted=row.lines_posted,
             )
             for row in rows
         ],
@@ -369,21 +414,45 @@ async def summaries(db: AsyncSession, recipes: list[Recipe]) -> dict[uuid.UUID, 
         .scalars()
         .all()
     )
-    out: dict[uuid.UUID, RecipeCostSummary] = {}
-    for row in rows:
-        recipe = by_id[row.recipe_id]
-        if row.content_hash != recipe.content_hash:
-            continue
-        out[row.recipe_id] = RecipeCostSummary(
+    current = [row for row in rows if row.content_hash == by_id[row.recipe_id].content_hash]
+    stale = await _posted_stale(db, [row.id for row in current if row.lines_posted])
+    return {
+        row.recipe_id: RecipeCostSummary(
             consumed_cost=row.consumed_cost,
             consumed_cost_high=row.consumed_cost_high,
             basket_cost=row.basket_cost,
             basket_cost_high=row.basket_cost_high,
             per_serving=row.per_serving,
+            posted_consumed_cost=row.posted_consumed_cost,
+            posted_consumed_cost_high=row.posted_consumed_cost_high,
+            posted_basket_cost=row.posted_basket_cost,
+            posted_basket_cost_high=row.posted_basket_cost_high,
+            posted_share=row.posted_share,
             lines_priced=row.lines_priced,
             lines_total=row.lines_total,
             lines_negligible=row.lines_negligible,
+            lines_posted=row.lines_posted,
+            posted_stale=row.id in stale,
             provisional=row.provisional,
             computed_at=row.computed_at,
         )
-    return out
+        for row in current
+    }
+
+
+async def _posted_stale(db: AsyncSession, snapshot_ids: list[uuid.UUID]) -> set[uuid.UUID]:
+    """The snapshots with a line on a posted price older than ``stale_after_days``."""
+    if not snapshot_ids:
+        return set()
+    since = datetime.now(UTC) - timedelta(days=stale_after_days())
+    rows = await db.execute(
+        select(RecipeCostLine.snapshot_id)
+        .join(PriceObservation, PriceObservation.id == RecipeCostLine.observation_id)
+        .where(
+            RecipeCostLine.snapshot_id.in_(snapshot_ids),
+            RecipeCostLine.status == "posted",
+            PriceObservation.observed_at < since,
+        )
+        .distinct()
+    )
+    return set(rows.scalars())
