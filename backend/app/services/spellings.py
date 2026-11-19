@@ -183,6 +183,9 @@ class VocabularyReport:
     # (ingredient, FDC id, verdict, reason) for preferred references whose USDA
     # record doesn't look like the ingredient (#343).
     unfit_references: list[tuple[str, str, str, str]] = field(default_factory=list)
+    # (ingredient, its unit, the standard entry's, prices failing, measures that
+    # would drop, recipe lines left unconvertible) for unit drift (#527).
+    unit_drift: list[tuple[str, str, str, int, int, int]] = field(default_factory=list)
 
 
 def report_lines(report: VocabularyReport) -> list[str]:
@@ -193,6 +196,11 @@ def report_lines(report: VocabularyReport) -> list[str]:
     ]
     out.append(f"Ingredients without a USDA reference: {len(report.without_reference)}")
     out += [f"  {name}" for name in report.without_reference]
+    out.append(f"Unit differs from the standard list: {len(report.unit_drift)}")
+    out += [
+        f"  {name}: {old} -> {new} ({p} prices fail; {m} measures drop; {n} lines unconvertible)"
+        for name, old, new, p, m, n in report.unit_drift
+    ]
     if not report.usda_loaded:
         out.append("USDA data isn't loaded, so references weren't checked against it.")
         return out
@@ -221,6 +229,7 @@ async def vocabulary_report(db: AsyncSession) -> VocabularyReport:
         .all()
     )
     report = VocabularyReport(await skipped_plurals(db), list(unreferenced))
+    report.unit_drift = await _unit_drift(db)
     report.usda_loaded = (
         await db.execute(select(func.count()).select_from(FdcFood))
     ).scalar_one() > 0
@@ -254,3 +263,25 @@ async def vocabulary_report(db: AsyncSession) -> VocabularyReport:
             if fit.verdict != "fits":
                 report.unfit_references.append((name, fdc_id, fit.verdict, fit.reason))
     return report
+
+
+async def _unit_drift(db: AsyncSession) -> list[tuple[str, str, str, int, int, int]]:
+    """Ingredients whose unit differs from their standard entry's, with what a
+    switch would do (``unit_switch``, which imports the catalog, hence here)."""
+    from app.services import unit_switch
+
+    entries = {e.key: e.unit for e in standard_list().ingredients}
+    rows = await db.execute(
+        select(Ingredient.id, Ingredient.slug, Ingredient.canonical_unit)
+        .where(Ingredient.active, Ingredient.merged_into.is_(None))
+        .order_by(Ingredient.name)
+    )
+    out = []
+    for ingredient_id, slug, unit in rows.all():
+        if slug in entries and entries[slug] != unit:
+            p = await unit_switch.plan(db, ingredient_id)
+            out.append(
+                (p.ingredient.name, unit, p.entry.unit, p.failing, len(p.dropped),
+                 len(p.unconvertible))
+            )  # fmt: skip
+    return out

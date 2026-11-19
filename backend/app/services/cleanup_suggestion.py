@@ -50,6 +50,8 @@ class Suggestion:
     # A hash of what the consequences rest on (a move or a unit switch): an accept
     # that sends another one was made against a list that has since changed.
     fingerprint: str = ""
+    # A unit switch's measures that can't convert and go: the confirm button counts them.
+    measures_dropped: int = 0
 
     @property
     def ready(self) -> bool:
@@ -79,6 +81,7 @@ def as_out(s: Suggestion) -> dict:
         "confidence": s.confidence,
         "consequences": [{"text": c.text, "recipe_id": c.recipe_id} for c in s.consequences],
         "fingerprint": s.fingerprint,
+        "measures_dropped": s.measures_dropped,
     }
 
 

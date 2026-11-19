@@ -51,6 +51,8 @@ class CleanupSuggestionOut(ApiModel):
     consequences: list[CleanupConsequenceOut] = Field(default_factory=list)
     # Sent back with an accept: a different one now is 409 cleanup_changed.
     fingerprint: str = ""
+    # A unit switch's measures that would be dropped (the red confirm counts them).
+    measures_dropped: int = 0
 
 
 class CleanupOut(ApiModel):
@@ -85,3 +87,15 @@ class CleanupApplyOut(ApiModel):
     # Guesses named with others, left unapplied: a guess is accepted on its own.
     held: list[str]
     results: list[CleanupResultOut] = Field(default_factory=list)
+
+
+class UnitSwitchOut(ApiModel):
+    """An ingredient's switch to its standard entry's unit (#527), or null when its
+    unit is the entry's or it has none; offered here even when skipped in Tidy."""
+
+    suggestion: CleanupSuggestionOut | None
+
+
+class UnitSwitchIn(ApiModel):
+    # The fingerprint of the switch as shown; a different one now is 409 cleanup_changed.
+    fingerprint: str | None = Field(default=None, max_length=64)

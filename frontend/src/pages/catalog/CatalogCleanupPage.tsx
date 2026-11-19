@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useLocation } from "react-router";
 import {
   useApplyCleanup,
   useCleanup,
@@ -14,6 +14,7 @@ import {
   resultSentence,
 } from "../../components/catalog/CleanupConsequences";
 import { Badge, inputClass } from "../../components/catalog/fields";
+import { UnitSwitchConfirm } from "../../components/catalog/UnitSwitch";
 import { CATEGORY_KEYS } from "../../components/CategoryChip";
 import { useNotice } from "../../components/Notice";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
@@ -60,6 +61,11 @@ const GROUPS: { kind: CleanupKind; title: string; hint: string }[] = [
     hint: "Produce whose name says bunch and whose pack doesn't. With the pack in bunches, its prices compare per bunch, and by weight once one bunch is weighed.",
   },
   {
+    kind: "unit_mismatch",
+    title: "Units that differ from the standard list",
+    hint: "Ingredients linked to a standard name that measures them in another unit. Measures that still convert are rewritten in the new unit and the rest are dropped; each is listed before you switch, with the recipe lines it affects.",
+  },
+  {
     kind: "product_move",
     title: "Products under a broader ingredient",
     hint: "A product whose name says it is a kind of its ingredient, such as bourbon under whiskey, moved to the ingredient for that kind. Recipe lines that would lose their price are listed first.",
@@ -82,6 +88,12 @@ export function CatalogCleanupPage() {
   usePageTitle("Tidy the catalog");
   const cleanup = useCleanup();
   const items = cleanup.data ?? [];
+  // A link from Needs a bridge names a row (issue 527): bring it into view once listed.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash || !cleanup.data) return;
+    document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: "center" });
+  }, [hash, cleanup.data]);
   return (
     <>
       <PageHeader
@@ -117,34 +129,18 @@ export function CatalogCleanupPage() {
   );
 }
 
-function Group({
-  kind,
-  title,
-  hint,
-  rows,
-}: {
-  kind: CleanupKind;
-  title: string;
-  hint: string;
-  rows: CleanupSuggestion[];
-}) {
-  const [shown, setShown] = useState(PAGE);
-  // Categories the person chose instead of the guess, by suggestion key.
-  const [chosen, setChosen] = useState<Record<string, string>>({});
+/**
+ * Accepting from a group: the chosen categories and the fingerprints shown go with
+ * the keys; one accept ends with its counts, or keeps its row with the server's
+ * words. A guessed unit switch confirms in a panel first (issue 527).
+ */
+function useAccept(rows: CleanupSuggestion[], chosen: Record<string, string>) {
   const apply = useApplyCleanup();
-  const skip = useSkipCleanup();
   const notice = useNotice();
-  const visible = rows.slice(0, shown);
-  const valueOf = (s: CleanupSuggestion) => chosen[s.key] ?? s.value;
-  const canAccept = (s: CleanupSuggestion) => s.ready || (s.choosable && valueOf(s) !== "");
-  // A guess is accepted one at a time, unless the person chose its value (issue 372).
-  const isGuess = (s: CleanupSuggestion) =>
-    s.confidence === "guess" && s.ready && !(s.key in chosen);
-  const ready = visible.filter((s) => canAccept(s) && !isGuess(s)).map((s) => s.key);
-  const guesses = rows.some(isGuess);
-  const busy = apply.isPending || skip.isPending;
   // An accept that failed, kept on its row with the server's words (never an empty state).
   const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
+  // The guessed unit switch whose confirm panel is open (issue 527).
+  const [confirming, setConfirming] = useState<string | null>(null);
   const accept = (keys: string[]) => {
     setFailed(null);
     const one = keys.length === 1 ? rows.find((r) => r.key === keys[0]) : undefined;
@@ -160,6 +156,7 @@ function Group({
       },
       {
         onSuccess: ({ applied, gone, held, results = [] }) => {
+          setConfirming(null);
           if (one && applied === 0) {
             setFailed({ key: one.key, message: "Nothing was applied; reload the list." });
             return;
@@ -181,6 +178,34 @@ function Group({
       },
     );
   };
+  return { apply, accept, failed, confirming, setConfirming };
+}
+
+function Group({
+  kind,
+  title,
+  hint,
+  rows,
+}: {
+  kind: CleanupKind;
+  title: string;
+  hint: string;
+  rows: CleanupSuggestion[];
+}) {
+  const [shown, setShown] = useState(PAGE);
+  // Categories the person chose instead of the guess, by suggestion key.
+  const [chosen, setChosen] = useState<Record<string, string>>({});
+  const skip = useSkipCleanup();
+  const visible = rows.slice(0, shown);
+  const valueOf = (s: CleanupSuggestion) => chosen[s.key] ?? s.value;
+  const canAccept = (s: CleanupSuggestion) => s.ready || (s.choosable && valueOf(s) !== "");
+  // A guess is accepted one at a time, unless the person chose its value (issue 372).
+  const isGuess = (s: CleanupSuggestion) =>
+    s.confidence === "guess" && s.ready && !(s.key in chosen);
+  const ready = visible.filter((s) => canAccept(s) && !isGuess(s)).map((s) => s.key);
+  const guesses = rows.some(isGuess);
+  const { apply, accept, failed, confirming, setConfirming } = useAccept(rows, chosen);
+  const busy = apply.isPending || skip.isPending;
   const headingId = `cleanup-${kind}`;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -220,7 +245,25 @@ function Group({
               }
               error={failed?.key === s.key ? failed.message : null}
               onChoose={(value) => setChosen({ ...chosen, [s.key]: value })}
-              onAccept={() => accept([s.key])}
+              onAccept={() =>
+                s.kind === "unit_mismatch" && s.confidence === "guess"
+                  ? setConfirming(confirming === s.key ? null : s.key)
+                  : accept([s.key])
+              }
+              confirm={
+                confirming === s.key ? (
+                  <UnitSwitchConfirm
+                    suggestion={s}
+                    pending={apply.isPending}
+                    error={failed?.key === s.key ? failed.message : null}
+                    onConfirm={() => accept([s.key])}
+                    onCancel={() => {
+                      setConfirming(null);
+                      document.getElementById(`accept-${s.key}`)?.focus();
+                    }}
+                  />
+                ) : null
+              }
               onSkip={() => skip.mutate([s.key])}
             />
           ))}
@@ -249,6 +292,7 @@ function Row({
   onChoose,
   onAccept,
   onSkip,
+  confirm,
 }: {
   suggestion: CleanupSuggestion;
   guess: boolean;
@@ -260,9 +304,11 @@ function Row({
   onChoose: (value: string) => void;
   onAccept: () => void;
   onSkip: () => void;
+  confirm: ReactNode;
 }) {
   return (
     <li
+      id={`cleanup-row-${s.key}`}
       className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
       data-testid="cleanup-row"
     >
@@ -272,10 +318,15 @@ function Row({
         value={value}
         disabled={busy}
         onChoose={onChoose}
-        error={error}
+        error={confirm ? null : error}
+        confirm={confirm}
       />
       <div className="flex shrink-0 gap-2">
         <Button
+          id={`accept-${s.key}`}
+          aria-expanded={
+            s.kind === "unit_mismatch" && s.confidence === "guess" ? Boolean(confirm) : undefined
+          }
           disabled={busy || !acceptable}
           onClick={onAccept}
           aria-label={`${acceptLabel(s)}: ${s.subject}`}
@@ -301,6 +352,7 @@ function Proposal({
   disabled,
   onChoose,
   error,
+  confirm = null,
 }: {
   suggestion: CleanupSuggestion;
   guess: boolean;
@@ -308,6 +360,7 @@ function Proposal({
   disabled: boolean;
   onChoose: (value: string) => void;
   error: string | null;
+  confirm?: ReactNode;
 }) {
   return (
     <div className="min-w-0">
@@ -325,7 +378,7 @@ function Proposal({
         </p>
       )}
       <p className={`text-xs ${muted}`}>{s.reason}</p>
-      <Consequences items={s.consequences ?? []} />
+      {confirm ?? <Consequences items={s.consequences ?? []} />}
       {error ? (
         <p role="alert" className="text-sm text-red-800 dark:text-red-300">
           {error}

@@ -43,6 +43,8 @@ export interface CleanupSuggestion {
   consequences?: CleanupConsequence[];
   /** Sent back with the accept: the consequences the person was shown. */
   fingerprint?: string;
+  /** A unit switch's measures that would be dropped. */
+  measures_dropped?: number;
 }
 
 /** What one accepted move or unit switch changed. */
@@ -87,7 +89,39 @@ function useRefresh() {
     void client.invalidateQueries({ queryKey: inboxKey });
     void client.invalidateQueries({ queryKey: ["ingredients"] });
     void client.invalidateQueries({ queryKey: ["products"] });
+    // A unit switch renormalizes prices and recomputes recipes (issue 527).
+    void client.invalidateQueries({ queryKey: ["price-book"] });
+    void client.invalidateQueries({ queryKey: ["bridges"] });
+    void client.invalidateQueries({ queryKey: ["recipes"] });
+    void client.invalidateQueries({ queryKey: ["unit-switch"] });
   };
+}
+
+/** An ingredient's switch to its standard entry's unit, or null when there is none (issue 527). */
+export function useUnitSwitch(ingredientId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["unit-switch", ingredientId],
+    queryFn: () =>
+      api<{ suggestion: CleanupSuggestion | null }>(
+        `/ingredients/${encodeURIComponent(ingredientId)}/unit-switch`,
+      ),
+    select: (data) => data.suggestion,
+    enabled,
+  });
+}
+
+/** The switch itself, against the consequences shown (409 cleanup_changed otherwise). */
+export function useSwitchUnit(ingredientId: string) {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: (fingerprint: string | undefined) =>
+      api<CleanupResult>(`/ingredients/${encodeURIComponent(ingredientId)}/unit-switch`, {
+        method: "POST",
+        body: { fingerprint },
+      }),
+    onSuccess: refresh,
+    onError: refresh,
+  });
 }
 
 export function useApplyCleanup() {

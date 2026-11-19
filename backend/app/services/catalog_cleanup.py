@@ -20,12 +20,15 @@ sticks until the data changes. Kinds:
 - ``product_pack``: produce whose name says "bunch" and whose pack doesn't, offered
   the pack "1 bunch" (issue 371, ``cleanup_packs``);
 - ``product_move``: a product under a generic ingredient whose name says it is a
-  narrower standard entry another ingredient holds (#525, ``cleanup_moves``).
+  narrower standard entry another ingredient holds (#525, ``cleanup_moves``);
+- ``unit_mismatch``: an ingredient linked to a standard entry in another unit,
+  offered the entry's unit (#527, ``unit_switch``).
 
-A move is accepted alone: its row is locked, the one suggestion is built again,
-and an accept that sends the fingerprint of an older listing is refused
+A move or a unit switch named alone locks its row and is built again, and an
+accept that sends the fingerprint of an older listing is refused
 (``cleanup_changed``), as is one whose suggestion is gone or skipped
-(``cleanup_gone``). The accept is one transaction; nothing is half applied.
+(``cleanup_gone``). The accept is one transaction; nothing is half applied. A
+sure unit switch may also go with "Accept these N".
 
 Each suggestion is ``sure`` or a ``guess`` (issue 372; ``cleanup_ingredients``).
 Accepting several at once applies only the sure ones and the ones a person chose a
@@ -60,6 +63,7 @@ from app.services import (
     cleanup_packs,
     ingredient_duplicates,
     ingredient_reconcile,
+    unit_switch,
 )
 from app.services.cleanup_suggestion import Kind, Suggestion, as_out, parse_key, suggestion_key
 from app.services.ingredient_names import brand_keys
@@ -73,6 +77,7 @@ KINDS: tuple[Kind, ...] = (
     "product_brand",
     "product_pack",
     "product_move",
+    "unit_mismatch",
 )
 
 log = get_logger(__name__)
@@ -85,8 +90,12 @@ _ALONE = {
         lambda db, subject: cleanup_moves.product_moves(db, product_id=subject),
         cleanup_moves.accept,
     ),
+    "unit_mismatch": (unit_switch.lock, unit_switch.for_ingredient, unit_switch.accept),
 }
-_FAILED = {"product_move": "The move failed, and nothing changed."}
+_FAILED = {
+    "product_move": "The move failed, and nothing changed.",
+    "unit_mismatch": "The switch failed, and nothing changed.",
+}
 
 
 @dataclass
@@ -279,6 +288,7 @@ async def suggestions(db: AsyncSession, *, guess: bool = True) -> list[Suggestio
         *await cleanup_ingredients.usda_links(db, rows, guess=guess),
         *await cleanup_ingredients.categories(db, rows, guess=guess),
         *_names(rows, keys),
+        *await unit_switch.unit_mismatches(db, rows, guess=guess),
         *_products(products, keys),
         *await cleanup_moves.product_moves(
             db, guess=guess, rows=[p for p in products if p.ingredient_live]
@@ -353,8 +363,22 @@ def _gone() -> ApiError:
     return ApiError(409, "cleanup_gone", "This suggestion changed or was skipped; reload the list.")
 
 
+async def switch_unit(db: AsyncSession, ingredient_id: uuid.UUID, sent: str | None) -> Applied:
+    """The link page's and Needs a bridge's unit switch (#527): the same accept as
+    Tidy the catalog's, offered even when the suggestion was skipped there."""
+    found = await unit_switch.for_ingredient(db, ingredient_id)
+    if not found:
+        raise _gone()
+    return await _apply_alone(db, found[0].key, ("unit_mismatch", ingredient_id), sent, skips=False)
+
+
 async def _apply_alone(
-    db: AsyncSession, key: str, parsed: tuple[str, uuid.UUID], sent: str | None
+    db: AsyncSession,
+    key: str,
+    parsed: tuple[str, uuid.UUID],
+    sent: str | None,
+    *,
+    skips: bool = True,
 ) -> Applied:
     """One move or switch, in one transaction: the row locked, the suggestion built
     again, the fingerprint the person saw checked, then applied and committed."""
@@ -369,7 +393,7 @@ async def _apply_alone(
         )  # fmt: skip
 
     await lock(db, subject)
-    skipped = await db.scalar(select(CleanupSkip.key).where(CleanupSkip.key == key))
+    skipped = skips and await db.scalar(select(CleanupSkip.key).where(CleanupSkip.key == key))
     s = None if skipped else next((x for x in await build(db, subject) if x.key == key), None)
     if s is None:
         await db.rollback()

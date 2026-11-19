@@ -2308,6 +2308,11 @@
             "title": "Kind",
             "type": "string"
           },
+          "measures_dropped": {
+            "default": 0,
+            "title": "Measures Dropped",
+            "type": "integer"
+          },
           "ready": {
             "title": "Ready",
             "type": "boolean"
@@ -7258,6 +7263,22 @@
             ],
             "title": "Keep Fridge Days"
           },
+          "keep_measures": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array",
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Measures"
+          },
           "keep_name": {
             "default": false,
             "title": "Keep Name",
@@ -11280,6 +11301,16 @@
           },
           "product": {
             "$ref": "#/components/schemas/ProductRef"
+          },
+          "standard_switch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StandardSwitchOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "enum": [
@@ -19376,6 +19407,30 @@
         "title": "StandardEntryOut",
         "type": "object"
       },
+      "StandardSwitchOut": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "boolean"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit",
+          "key",
+          "skipped"
+        ],
+        "title": "StandardSwitchOut",
+        "type": "object"
+      },
       "StatusCounts": {
         "additionalProperties": false,
         "properties": {
@@ -21435,6 +21490,46 @@
           "code"
         ],
         "title": "UnitParseOut",
+        "type": "object"
+      },
+      "UnitSwitchIn": {
+        "additionalProperties": false,
+        "properties": {
+          "fingerprint": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fingerprint"
+          }
+        },
+        "title": "UnitSwitchIn",
+        "type": "object"
+      },
+      "UnitSwitchOut": {
+        "additionalProperties": false,
+        "description": "An ingredient's switch to its standard entry's unit (#527), or null when its\nunit is the entry's or it has none; offered here even when skipped in Tidy.",
+        "properties": {
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CleanupSuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "suggestion"
+        ],
+        "title": "UnitSwitchOut",
         "type": "object"
       },
       "UploadBatchCreate": {
@@ -26733,6 +26828,102 @@
         "summary": "Skip",
         "tags": [
           "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/ingredients/{ingredient_id}/unit-switch": {
+      "get": {
+        "description": "What switching the ingredient to its standard entry's unit would do (#527).",
+        "operationId": "get_unit_switch_api_v1_ingredients__ingredient_id__unit_switch_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitSwitchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Unit Switch",
+        "tags": [
+          "catalog cleanup"
+        ]
+      },
+      "post": {
+        "description": "Switch the ingredient to its standard entry's unit, as Tidy the catalog's accept\ndoes, in one transaction. 409 cleanup_gone: no switch to make; 409\ncleanup_changed: the consequences differ from the fingerprint sent; 500\nunit_switch_failed: it failed, and nothing changed.",
+        "operationId": "switch_unit_api_v1_ingredients__ingredient_id__unit_switch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnitSwitchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupResultOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Switch Unit",
+        "tags": [
+          "catalog cleanup"
         ]
       }
     },
