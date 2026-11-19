@@ -124,6 +124,8 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 **Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VC6). Doc 12 rule 6 proposed it, but satisfying through parents changes what price comparison (`ingredient_offer`) and costing mean. Sub-phase 1G ships flat ingredients, and a `parent_id` can be added later without reshaping anything. The Phase 3 review (2026-10-09) kept ingredients flat for costing: a product fulfils a recipe line only when its ingredient, after `merged_into`, is the line's. Issue #525 (2026-11-16) brought the first recipe case: a generic spirit line lost its only price once its bottles were filed under a style. The open-issues review (2026-11-17) kept `parent_id` deferred: the measured harm was one line, which a pin covers, and the cleanup check that offers to move a product to a more specific standard entry ships on its own. When this is built, parent fulfilment must cover `ingredient_offer` (Compare and the trip planner) as well as costing, and `recipe_cost_triggers` must carry a child's price change to recipes with a parent line.
 
+When it lands, retire Tidy the catalog's `product_move` check (`services/cleanup_moves.py`, `catalog/specificity.py`, Wave 2), which stands in for it by moving products to the more specific ingredient.
+
 **Effort:** L (human) / M (CC)
 **Priority:** P3
 **Depends on:** A second measured recipe line that a pin can't reasonably cover (#525 stays open for it)
@@ -177,6 +179,30 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Effort:** M (human) / S (CC)
 **Priority:** P3
 **Depends on:** A design for ingredient-level photos and their attribution
+
+### A cost report by folder or tag
+
+**What:** `kerp recipes cost-report`: the priced, posted and unpriced line counts of every recipe, by folder or tag, in a stable text format.
+
+**Why:** Re-measuring costing after a change (Wave 2's cocktail set: `lines_priced + lines_posted` up, nothing priced lost) took a one-off script.
+
+**Context:** Proposed as E3 in the Wave 2 (Costing A) review on 2026-11-18 and deferred as outside its blast radius: the recipes list's completeness filter and one SQL count cover the re-measure, and a read-only scratch script did it for Wave 2.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** Nothing
+
+### "Bottles to price" in Needs you
+
+**What:** An inbox row naming the products whose posted prices cost the most recipe lines, so a person knows which bottles to price next.
+
+**Why:** Once posted prices are a recipe's last resort (#523), each recipe's cost table names its posted lines, but nothing says which one receipt or shelf price would firm up the most recipes.
+
+**Context:** Proposed as V10 in the Wave 2 (Costing A) review on 2026-11-18 and deferred as outside its blast radius. The data is in place: `recipe_cost_line.status = 'posted'` with its product.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** Wave 2 (#523) deployed
 
 ## Plan
 
