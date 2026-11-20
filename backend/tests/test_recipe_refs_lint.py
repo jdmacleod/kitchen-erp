@@ -77,3 +77,18 @@ def test_lint_refs_never_opens_a_file() -> None:
     """The check is on paths alone: a target outside the root is never looked up."""
     issues = lint_refs({"sour.cook": parse("Shake @../../etc/passwd{1%g}.\n")})
     assert [i.kind for i in issues] == ["outside"]
+
+
+def test_the_vocabulary_leaves_recipe_references_out(tmp_path: Path) -> None:
+    """A reference names a file, not an ingredient: no drift, no unknown (#526)."""
+    from app.services import recipe_vocabulary as vocab
+
+    _write(tmp_path, "basics/syrup.cook", SYRUP)
+    _write(tmp_path, "sour.cook", "Shake @./basics/syrup{1%fl oz} with @lime juice{1%fl oz}.\n")
+    report = vocab.build_report(
+        fake_context({"Sugar": [], "Water": [], "Lime juice": []}),
+        tmp_path,
+        vocab.read_files(tmp_path),
+    )
+    names = {n.name_norm for n in report.names}
+    assert "syrup" not in names and "lime juice" in names
