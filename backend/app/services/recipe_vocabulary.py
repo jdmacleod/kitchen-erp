@@ -252,7 +252,7 @@ def build_report(ctx: Context, root: Path, files: Iterable[CookFile]) -> Vocabul
             continue
         for ref in f.parsed.ingredients:
             key = normalize_name(ref.raw_name)
-            if not key:
+            if not key or ref.ref_path:  # a recipe reference names a file (#526)
                 continue
             counts[key] += 1
             raw.setdefault(key, Counter())[ref.raw_name] += 1
@@ -418,7 +418,7 @@ def _rewritten_text(
     by_line: dict[int, list[IngredientRef]] = {}
     for ref in recipe.ingredients:
         key = normalize_name(ref.raw_name)
-        if key in targets:
+        if key in targets and not ref.ref_path:
             by_line.setdefault(ref.line, []).append(ref)
     tokens = 0
     for number, refs in by_line.items():
@@ -483,7 +483,7 @@ def plan_conform(ctx: Context, root: Path, files: Iterable[CookFile]) -> Conform
         targets: dict[str, Classification] = {}
         for ref in f.parsed.ingredients:
             key = normalize_name(ref.raw_name)
-            if not key:
+            if not key or ref.ref_path:  # a recipe reference names a file (#526)
                 continue
             if key not in cache:
                 cache[key] = classify(ctx, key)

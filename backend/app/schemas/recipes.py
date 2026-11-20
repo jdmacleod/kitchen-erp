@@ -18,7 +18,7 @@ RecipeStatus = Literal["ok", "parse_error", "missing"]
 Completeness = Literal["complete", "incomplete"]
 MountState = Literal["mounted", "missing", "empty", "no_cook_files"]
 QtyKind = Literal["number", "range", "text", "none"]
-Resolution = Literal["alias", "manual", "unmatched", "negligible", "ignored"]
+Resolution = Literal["alias", "manual", "unmatched", "negligible", "ignored", "recipe"]
 
 
 class RecipeSummary(ApiModel):
@@ -61,6 +61,9 @@ class RecipeIngredientOut(ApiModel):
     resolution: Resolution
     ingredient_id: uuid.UUID | None
     ingredient_name: str | None = None
+    # A recipe reference (#526): the path as written and the recipe it names.
+    ref_path: str | None = None
+    ref_recipe_id: uuid.UUID | None = None
 
 
 class RecipePinOut(ApiModel):
@@ -99,6 +102,10 @@ class BodyIngredient(ApiModel):
     unit: str | None = None
     note: str | None = None
     seq: int
+    # A recipe reference (#526): the path as written, and the recipe it links
+    # to when one is at that path (filled in when the recipe is read).
+    ref_path: str | None = None
+    recipe_id: uuid.UUID | None = None
 
 
 class BodyReference(ApiModel):
@@ -190,6 +197,12 @@ class RecipesStatus(ApiModel):
     last_scan_at: datetime | None
 
 
+class MissingRecipeRef(ApiModel):
+    referrer_path: str
+    ref_path: str
+    target: str | None  # null when the path leaves the recipes root
+
+
 class ScanOut(ApiModel):
     """What one scan changed."""
 
@@ -203,6 +216,9 @@ class ScanOut(ApiModel):
     missing: int
     parse_errors: int  # among the files created, updated or moved by this scan
     proposals: int
+    # Recipe references whose target isn't there (#526): `kerp recipes rescan`
+    # prints each with its referring file.
+    missing_refs: list[MissingRecipeRef] = Field(default_factory=list)
 
     @property
     def changed(self) -> int:

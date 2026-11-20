@@ -71,6 +71,8 @@ async def test_the_body_holds_the_steps_with_seq_linking_each_ingredient_to_its_
         "unit": "g",
         "note": None,
         "seq": 1,
+        "ref_path": None,  # set on a recipe reference only (#526)
+        "recipe_id": None,
     }
     assert boil[3] == {"t": "cookware", "name": "pot", "qty": None}
     assert boil[5] == {"t": "timer", "name": None, "qty": "8", "unit": "minutes"}

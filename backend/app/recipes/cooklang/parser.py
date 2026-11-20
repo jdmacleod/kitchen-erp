@@ -15,6 +15,9 @@ The grammar, as this parser reads it:
 - `@name|alias{…}` is the ingredient `name`, shown as `alias` (the cooklang-rs
   alias extension). A name that starts with `|` has no ingredient before the
   alias; it stays as written and `hints.alias_hints` says what to write.
+- `@./path/name{qty%unit}` is a recipe reference (the Cooklang spec's form):
+  an ingredient line costed from the recipe at that path, relative to this
+  file (#526). Without braces it is text, as `.` is punctuation.
 - `@&name` refers to an ingredient named earlier, and `@&(~1)name`, `@&(2)name`,
   `@&(=2)name` and `@&(=~1)name` to an earlier step or section (the cooklang-rs
   extensions; see `references.py`). A target that doesn't come before the
@@ -36,6 +39,7 @@ from app.recipes.cooklang.frontmatter import (
     parse_front_matter_block,
     parse_metadata_line,
 )
+from app.recipes.cooklang.makes import parse_yield
 from app.recipes.cooklang.model import (
     Cookware,
     IngredientRef,
@@ -156,6 +160,17 @@ def _servings(value: object) -> tuple[Decimal | None, str | None]:
     return parse_number(text), text
 
 
+def _makes(value: object) -> tuple[Decimal | None, str | None, str | None]:
+    """`yield: 500 ml` → (500, "ml", "500 ml"); one that doesn't parse keeps only its text."""
+    if not isinstance(value, str) or not value.strip():
+        return None, None, None
+    text = value.strip()
+    parsed = parse_yield(text)
+    if isinstance(parsed, tuple):
+        return parsed[0], parsed[1], text
+    return None, None, text
+
+
 def parse(text: str) -> Recipe | ParseError:
     """Parse a Cooklang document. Returns a `ParseError` instead of raising, always."""
     if not isinstance(text, str):
@@ -177,6 +192,7 @@ def parse(text: str) -> Recipe | ParseError:
     scan.end_section()
     title = scan.metadata.get("title")
     servings, servings_text = _servings(scan.metadata.get("servings"))
+    makes_qty, makes_unit, makes_text = _makes(scan.metadata.get("yield"))
     return link_references(
         Recipe(
             front_matter=scan.metadata,
@@ -184,6 +200,9 @@ def parse(text: str) -> Recipe | ParseError:
             title=title if isinstance(title, str) and title.strip() else None,
             servings=servings,
             servings_text=servings_text,
+            makes_qty=makes_qty,
+            makes_unit=makes_unit,
+            makes_text=makes_text,
         )
     )
 
@@ -324,7 +343,7 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
             note = line[end + 1 : note_close].strip() or None
             end = note_close + 1
         name, alias = _alias(marker, name)
-        item = _build(marker, name or None, body, note, optional, line_number, alias)
+        item = _recipe_ref(_build(marker, name or None, body, note, optional, line_number, alias))
         return _place(as_reference(item, target), at, end, j, j + len(name)), end
 
     # Single-word form: name characters, allowing a joiner between two of them.
@@ -339,6 +358,19 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
         return None
     item = as_reference(_build(marker, name, "", None, optional, line_number), target)
     return _place(item, at, k, j, k), k
+
+
+def _recipe_ref(item: Item) -> Item:
+    """An ingredient named `./basics/simple-syrup` or `../sauces/aioli` is the
+    Cooklang spec's recipe reference: its name becomes the path's base name."""
+    if isinstance(item, IngredientRef) and item.raw_name.startswith(("./", "../")):
+        return replace(item, raw_name=_base_name(item.raw_name), ref_path=item.raw_name)
+    return item
+
+
+def _base_name(path: str) -> str:
+    """The reference's last path part, without a `.cook` written by habit."""
+    return path.rstrip("/").rsplit("/", 1)[-1].removesuffix(".cook") or path
 
 
 def _alias(marker: str, name: str) -> tuple[str, str | None]:

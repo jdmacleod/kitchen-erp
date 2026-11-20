@@ -55,7 +55,10 @@ OUT_OPTION = typer.Option(
     resolve_path=True,
 )
 STRICT_OPTION = typer.Option(
-    False, "--strict", help="Exit 1 when any name is drift or unknown, or a file does not parse."
+    False,
+    "--strict",
+    help="Exit 1 when any name is drift or unknown, a file does not parse, or a recipe "
+    "reference is missing, leaves the root, goes round, or meets a yield that doesn't parse.",
 )
 APPLY_OPTION = typer.Option(
     False, "--apply", help="Write the rewrites. Without it, print them as a unified diff."
@@ -116,7 +119,7 @@ def lint(path: Path | None = PATH_OPTION, strict: bool = STRICT_OPTION) -> None:
     report = vocab.build_report(ctx, root, files)
     for err in report.parse_errors:
         typer.echo(f"parse error  {err['path']}: {err['error']}", err=True)
-    hints = _reference_hints(files)
+    hints = _reference_hints(files) + _recipe_ref_issues(files)
     flagged = report.flagged()
     for n in flagged:
         typer.echo(
@@ -154,6 +157,18 @@ def _reference_hints(files: list[CookFile]) -> int:
                     f"write {hint.suggestion}"
                 )
     return count
+
+
+def _recipe_ref_issues(files: list[CookFile]) -> int:
+    """Print each recipe reference that names no file, leaves the root, goes round
+    in a cycle, or points at a recipe whose `yield:` doesn't parse (#526)."""
+    from app.recipes.refs import lint_refs
+
+    issues = lint_refs({f.rel: f.parsed for f in files})
+    for issue in issues:
+        where = f"{issue.path}:{issue.line}" if issue.line else issue.path
+        typer.echo(f"{'recipe':<8} {where}  {issue.message}")
+    return len(issues)
 
 
 @recipes_cli.command("conform")
@@ -213,3 +228,6 @@ def rescan(reparse: bool = REPARSE_OPTION) -> None:
         f"{out.moved} moved, {out.missing} missing, "
         f"{_plural(out.parse_errors, 'parse error')}, {out.settling} still settling."
     )
+    for ref in out.missing_refs:
+        where = ref.target or "outside the recipes directory"
+        typer.echo(f"no recipe  {ref.referrer_path}: @{ref.ref_path} names {where}")

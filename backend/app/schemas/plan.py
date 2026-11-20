@@ -176,7 +176,10 @@ class FromRecipeIn(ApiModel):
 
 class SkippedLine(ApiModel):
     raw_name: str
-    reason: Literal["unmatched"]
+    # `recipe`: a recipe reference (#526), made at home rather than bought;
+    # `recipe_title` names it ("make Simple syrup") when the reference links.
+    reason: Literal["unmatched", "recipe"]
+    recipe_title: str | None = None
 
 
 class FromRecipeOut(ApiModel):

@@ -33,7 +33,7 @@ from app.models.base import Base, Timestamped, UUIDPrimaryKey
 
 RECIPE_STATUSES = ("ok", "parse_error", "missing")
 QTY_KINDS = ("number", "range", "text", "none")
-RESOLUTIONS = ("alias", "manual", "unmatched", "negligible", "ignored")
+RESOLUTIONS = ("alias", "manual", "unmatched", "negligible", "ignored", "recipe")
 YIELD_MODES = ("auto", "as_purchased", "edible")
 
 
@@ -70,9 +70,18 @@ class Recipe(UUIDPrimaryKey, Timestamped, Base):
     # steps of items, decimals as strings. Derived like the ingredient rows, and
     # kept like them when the file stops parsing.
     body: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    # Front matter `yield:` (0071, #526): what one batch makes. `makes_text` is
+    # the value as written; `makes_qty` and `makes_unit` are null when it isn't
+    # an amount and a mass or volume unit.
+    makes_qty: Mapped[Decimal | None] = mapped_column(Numeric)
+    makes_unit: Mapped[str | None] = mapped_column(String(16), ForeignKey("unit.code"))
+    makes_text: Mapped[str | None] = mapped_column(Text)
 
     ingredients: Mapped[list[RecipeIngredient]] = relationship(
-        back_populates="recipe", cascade="all, delete-orphan", order_by="RecipeIngredient.seq"
+        back_populates="recipe",
+        cascade="all, delete-orphan",
+        order_by="RecipeIngredient.seq",
+        foreign_keys="RecipeIngredient.recipe_id",
     )
     pins: Mapped[list[RecipePin]] = relationship(
         back_populates="recipe", cascade="all, delete-orphan"
@@ -88,7 +97,7 @@ class RecipeIngredient(UUIDPrimaryKey, Base):
             "qty_kind IN ('number', 'range', 'text', 'none')", name="ck_recipe_ingredient_qty_kind"
         ),
         CheckConstraint(
-            "resolution IN ('alias', 'manual', 'unmatched', 'negligible', 'ignored')",
+            "resolution IN ('alias', 'manual', 'unmatched', 'negligible', 'ignored', 'recipe')",
             name="ck_recipe_ingredient_resolution",
         ),
         CheckConstraint(
@@ -118,8 +127,15 @@ class RecipeIngredient(UUIDPrimaryKey, Base):
     resolution: Mapped[str] = mapped_column(String(16), nullable=False, default="unmatched")
     negligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     yield_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="auto")
+    # A recipe reference, `@./basics/simple-syrup{1%fl oz}` (0071, #526): the
+    # path as written, and the recipe it names when one is at that path. Such a
+    # line has resolution `recipe` and no ingredient.
+    ref_path: Mapped[str | None] = mapped_column(Text)
+    ref_recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="SET NULL"), index=True
+    )
 
-    recipe: Mapped[Recipe] = relationship(back_populates="ingredients")
+    recipe: Mapped[Recipe] = relationship(back_populates="ingredients", foreign_keys=[recipe_id])
 
 
 class RecipeNameIgnore(UUIDPrimaryKey, Base):
@@ -209,6 +225,9 @@ class RecipeCostSnapshot(UUIDPrimaryKey, Base):
     posted_basket_cost_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     posted_share: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False, server_default="0")
     lines_posted: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Lines costed from a recipe that is not fully priced itself (0071, #526):
+    # a snapshot with any is not complete.
+    lines_partial: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     # recipe_costing.COSTING_VERSION when computed; derived_versions rebuilds the rest.
     costing_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -264,5 +283,12 @@ class RecipeCostLine(UUIDPrimaryKey, Base):
     bridge_kind: Mapped[str | None] = mapped_column(String(20))
     bridge_confirmed: Mapped[bool | None] = mapped_column(Boolean)
     failure_code: Mapped[str | None] = mapped_column(String(20))
+    # The recipe this line costs from (0071, #526): a recipe reference, or the
+    # recipe that makes the line's ingredient. Set on failures too, so the
+    # message can name it. `source_partial` when that recipe is incomplete.
+    source_recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="SET NULL")
+    )
+    source_partial: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     snapshot: Mapped[RecipeCostSnapshot] = relationship(back_populates="lines")

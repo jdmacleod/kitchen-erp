@@ -453,7 +453,9 @@ async def test_a_recipe_at_scale_2_aggregates_as_06_settled(
     assert by_name["salt"]["resolution"] == "negligible"  # by name, the default list
 
     out = await from_recipe(admin_client, kitchen, recipe["id"], scale="2")
-    assert out["skipped"] == [{"raw_name": "dragon root", "reason": "unmatched"}]
+    assert out["skipped"] == [
+        {"raw_name": "dragon root", "reason": "unmatched", "recipe_title": None}
+    ]
     assert out["added"] == 4 and out["merged"] == 4  # barley ×3 more, thyme ×1 more
     assert out["already_on_list"] is False and out["existing_items"] == 0
     items = {
@@ -667,3 +669,34 @@ async def test_qty_rows_go_with_their_item(
     assert [(r["seq"], r["amount"], r["unit"]) for r in rows] == [(1, D("1"), "kg")]
     await admin_client.delete(f"{ITEMS}/{item['id']}")
     assert await app_conn.fetchval("SELECT count(*) FROM shopping_list_item_qty") == 0
+
+
+async def test_a_recipe_reference_is_skipped_as_made_at_home_and_never_pinned(
+    admin_client: httpx.AsyncClient,
+    kitchen: dict,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    """#526: the syrup is made from its own recipe, so the list names it rather than buying it."""
+    p = await pantry(admin_client)
+    syrup_text = "---\ntitle: Lantern syrup\nyield: 500 ml\n---\nWarm @thyme{5%g}.\n"
+    await indexed(admin_client, recipes_repo, "basics/lantern-syrup.cook", syrup_text)
+    drink = await indexed(
+        admin_client,
+        recipes_repo,
+        "harbor-sour.cook",
+        "Shake @./basics/lantern-syrup{1%fl oz} with @barley{10%g}.\n",
+    )
+    # A pin on the reference's name is refused: it never turns it into a product.
+    detail = (await admin_client.get(f"/api/v1/recipes/{drink['id']}")).json()
+    [ref_line] = [i for i in detail["ingredients"] if i["resolution"] == "recipe"]
+    r = await admin_client.put(
+        f"/api/v1/recipes/{drink['id']}/pins/{ref_line['name_norm']}",
+        json={"product_id": p["box"]["id"]},
+    )
+    out = await from_recipe(admin_client, kitchen, drink["id"])
+    assert out["skipped"] == [
+        {"raw_name": "lantern-syrup", "reason": "recipe", "recipe_title": "Lantern syrup"}
+    ]
+    names = [(i["ingredient"] or i["product"])["name"] for i in out["list"]["unchecked"]]
+    assert names == ["Barley"]
+    assert r.status_code == 409 and r.json()["error"]["code"] == "line_unresolved"

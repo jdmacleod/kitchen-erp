@@ -99,6 +99,11 @@ class Ingredient(UUIDPrimaryKey, Timestamped, Base):
     field_source: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    # The house recipe that makes it (#526, route b): a line on this ingredient
+    # that no product price covers costs from that recipe instead.
+    made_by_recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="SET NULL"), index=True
+    )
 
     measures: Mapped[list[IngredientMeasure]] = relationship(
         back_populates="ingredient",

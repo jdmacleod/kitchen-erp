@@ -6,6 +6,7 @@ removing a recipe whose file is gone. ``services/recipes`` keeps the index.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -101,6 +102,7 @@ async def recipe_out(db: AsyncSession, row: Recipe) -> RecipeOut:
         for name in RecipeOut.model_fields
         if name not in ("relink", "ingredients", "pins")
     }
+    columns["body"] = _linked_body(row.body, {line.seq: line.ref_recipe_id for line in lines})
     return RecipeOut(
         **columns,
         relink=relink,
@@ -112,6 +114,29 @@ async def recipe_out(db: AsyncSession, row: Recipe) -> RecipeOut:
         ],
         pins=await recipe_resolution.pins_out(db, row.id),
     )
+
+
+def _linked_body(
+    body: list[dict[str, Any]] | None, links: dict[int, uuid.UUID | None]
+) -> list[dict[str, Any]] | None:
+    """The stored body with each recipe reference's ``recipe_id`` filled in (#526)."""
+    if body is None or not any(links.values()):
+        return body
+    return [
+        {
+            **section,
+            "steps": [
+                [
+                    {**item, "recipe_id": links.get(item.get("seq"))}
+                    if item.get("t") == "ingredient" and item.get("ref_path")
+                    else item
+                    for item in step
+                ]
+                for step in section.get("steps", [])
+            ],
+        }
+        for section in body
+    ]
 
 
 async def relink(db: AsyncSession, recipe_id: uuid.UUID, target_id: uuid.UUID) -> Recipe:
@@ -141,6 +166,9 @@ async def relink(db: AsyncSession, recipe_id: uuid.UUID, target_id: uuid.UUID) -
             "parse_error_message",
             "front_matter",
             "body",
+            "makes_qty",
+            "makes_unit",
+            "makes_text",
             "last_indexed_at",
             "last_seen_at",
         )

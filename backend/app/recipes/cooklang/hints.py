@@ -39,7 +39,7 @@ def reference_hints(recipe: Recipe) -> list[ReferenceHint]:
         for step in section.steps:
             for ref in step.ingredients:
                 key = name_key(ref.raw_name)
-                if ref.reference:
+                if ref.reference or ref.ref_path:  # `@./…` names another recipe (#526)
                     continue
                 if key in sections:
                     hints.append(
