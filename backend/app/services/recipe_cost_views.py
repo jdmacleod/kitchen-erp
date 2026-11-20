@@ -39,7 +39,7 @@ from app.schemas.recipes import (
     RecipeIngredientOut,
     UsdaLineOffer,
 )
-from app.services import recipe_bridges, recipe_costing, unit_display
+from app.services import recipe_bridges, recipe_costing, recipe_source_views, unit_display
 from app.services.pricebook_views import stale_after_days
 from app.services.recipe_costing import _pins
 from app.units import display
@@ -299,6 +299,7 @@ async def cost_out(
     masses = await unit_display.mass_units(db, ingredient_ids)
     pins = await _pins(db, snapshot.recipe_id)
     hints = await _hints(db, rows, pins, home_base_id)
+    sources = await recipe_source_views.line_sources(db, snapshot, rows, home_base_id)
     now = datetime.now(UTC)
     stale = stale_after_days()
     lines: list[CostLineOut] = []
@@ -326,8 +327,10 @@ async def cost_out(
                 basket_cost_high=line.basket_cost_high,
                 packs=line.packs,
                 packs_high=line.packs_high,
-                usda_offer=_offer_out(offers.get(line.id)),
+                # A line from a recipe offers no shelf price, USDA value or density.
+                usda_offer=None if line.id in sources else _offer_out(offers.get(line.id)),
                 hint=hints.get(line.id),
+                **sources.get(line.id, {}),
             )
         )
     return RecipeCostOut(
@@ -355,8 +358,18 @@ async def cost_out(
         ),
         unconfirmed_share=snapshot.unconfirmed_share,
         posted_share=snapshot.posted_share,
+        makes_unit_cost=await _makes_unit_cost(db, snapshot, home_base_id),
         lines=lines,
     )
+
+
+async def _makes_unit_cost(
+    db: AsyncSession, snapshot: RecipeCostSnapshot, home_base_id: uuid.UUID | None
+):
+    recipe = await db.get(Recipe, snapshot.recipe_id)
+    if recipe is None or recipe.makes_qty is None:
+        return None
+    return await recipe_source_views.cost_unit_cost(db, recipe, snapshot, home_base_id)
 
 
 async def history_out(db: AsyncSession, recipe: Recipe, basis: str) -> CostHistoryOut:

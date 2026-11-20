@@ -19,6 +19,7 @@ import {
   type Recipe,
   type RecipePin,
 } from "../../api/recipes";
+import { unitAmount } from "../../api/recipeSources";
 import { useUsdaDecision } from "../../api/usdaReview";
 import { formatMoney, isZero, mul, roundTo, stripZeros } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
@@ -29,6 +30,13 @@ import { Alert, Button, focusRing, tapTarget } from "../ui";
 import { DecisionPicker, useNameDecision } from "./NameDecision";
 import { PinPicker } from "./PinPicker";
 import { hintText, PostedBadge, postedFigure, postedHeader } from "./posted";
+import {
+  fromRecipe,
+  RecipeRefCell,
+  SourceCell,
+  SourceWords,
+  sourcedPostedSentence,
+} from "./recipeSource";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 const squash = "text-amber-900 dark:text-amber-200";
@@ -54,6 +62,7 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
   const partial = count?.partial ?? false;
   const totals = cost?.totals;
   const posted = cost?.completeness.lines_posted;
+  const made = cost?.makes_unit_cost ?? null;
   return (
     <section
       aria-label="Totals"
@@ -85,10 +94,19 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
           partial={partial}
           value={totals?.per_serving ? formatMoney(totals.per_serving) : null}
         />
+        {made ? (
+          <Figure
+            label={`Per ${made.unit} made`}
+            costing={costing}
+            partial={made.partial}
+            value={unitAmount(made)}
+            note={made.source_basis === "latest" ? "latest prices" : null}
+          />
+        ) : null}
         <div className="flex min-w-0 flex-col">
           <dt className={`text-xs ${muted}`}>Known</dt>
-          <dd className={`text-sm ${partial ? squash : ""}`}>
-            {costing ? "Costing…" : count ? pricedSentence(count.priced, count.counted) : "—"}
+          <dd className={`text-sm ${partial ? squash : ""}`} data-testid="known">
+            {costing ? "Costing…" : count ? knownText(count) : "—"}
           </dd>
         </div>
       </dl>
@@ -108,6 +126,33 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
   );
 }
 
+/** What a total reads: the figure, "Costing…", its posted part alone, or "at least" it. */
+function figureShown(
+  value: string | null,
+  counted: string | null,
+  costing: boolean,
+  partial: boolean,
+  posted: string | null,
+): ReactNode {
+  if (costing) return "Costing…";
+  if (!counted && posted) return `${posted} posted`;
+  if (counted && partial)
+    return (
+      <>
+        <span className={`block text-xs font-normal ${squash}`}>at least</span>
+        {counted}
+      </>
+    );
+  return value ?? "—";
+}
+
+/** "12 of 12 lines priced · 1 from an incomplete recipe". */
+function knownText(count: ReturnType<typeof known>): string {
+  const base = pricedSentence(count.priced, count.counted);
+  if (count.fromPartial === 0) return base;
+  return `${base} · ${count.fromPartial} from ${count.fromPartial === 1 ? "an incomplete recipe" : "incomplete recipes"}`;
+}
+
 /**
  * One total; "at least" above it while lines are missing, since it is then a
  * floor. A posted part follows as "+ $2.30 posted"; with nothing counted, the
@@ -119,24 +164,17 @@ function Figure({
   costing,
   partial,
   posted = null,
+  note = null,
 }: {
   label: string;
   value: string | null;
   costing: boolean;
   partial: boolean;
   posted?: string | null;
+  note?: string | null;
 }) {
   const counted = value && value !== "—" ? value : null;
-  let shown: ReactNode = value ?? "—";
-  if (costing) shown = "Costing…";
-  else if (!counted && posted) shown = `${posted} posted`;
-  else if (counted && partial)
-    shown = (
-      <>
-        <span className={`block text-xs font-normal ${squash}`}>at least</span>
-        {counted}
-      </>
-    );
+  const shown = figureShown(value, counted, costing, partial, posted);
   return (
     <div className="flex min-w-0 flex-col">
       <dt className={`text-xs ${muted}`}>{label}</dt>
@@ -144,6 +182,9 @@ function Figure({
         {shown}
         {!costing && counted && posted ? (
           <span className={`block text-xs font-normal ${muted}`}>+ {posted} posted</span>
+        ) : null}
+        {!costing && note ? (
+          <span className={`block text-xs font-normal ${muted}`}>{note}</span>
         ) : null}
       </dd>
     </div>
@@ -206,7 +247,9 @@ export function CostTable({ cost, recipe }: { cost: RecipeCost; recipe: Recipe }
       </p>
     );
   }
-  const posted = postedHeader(cost.lines);
+  const posted = [postedHeader(cost.lines), sourcedPostedSentence(cost.lines)]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="flex flex-col gap-2">
       {posted ? (
@@ -252,6 +295,7 @@ export function CostTable({ cost, recipe }: { cost: RecipeCost; recipe: Recipe }
               line={line}
               staleAfterDays={cost.stale_after_days}
               recipeId={recipe.id}
+              recipePath={recipe.path}
               pin={pins.get(line.line.name_norm) ?? null}
               focusNext={focusNext}
             />
@@ -269,16 +313,13 @@ interface RowProps {
   line: CostLine;
   staleAfterDays: number;
   recipeId: string;
+  recipePath: string;
   pin: RecipePin | null;
   focusNext: (lineId: string, selector: string) => void;
 }
 
-function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
+function CostRow({ line, staleAfterDays, recipeId, recipePath, pin, focusNext }: RowProps) {
   const ingredient = line.line;
-  const packs =
-    line.packs && !isZero(line.packs)
-      ? `${stripZeros(line.packs)}${line.packs_high && line.packs_high !== line.packs ? `–${stripZeros(line.packs_high)}` : ""} ${line.packs === "1" ? "pack" : "packs"}`
-      : null;
   return (
     <div
       role="row"
@@ -312,6 +353,8 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
               />
             ) : null}
           </>
+        ) : ingredient.resolution === "recipe" ? (
+          <RecipeRefCell line={line} />
         ) : line.status === "negligible" ? (
           <span className={muted}>Not costed</span>
         ) : ingredient.resolution === "unmatched" ? (
@@ -325,21 +368,39 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
       {/* Quantity: converted, in the display unit the server chose (UI-3.10a). */}
       <QuantityCell line={line} />
       {/* Price used, or the words for why there is none. */}
-      <PriceCell line={line} staleAfterDays={staleAfterDays} />
+      <PriceCell line={line} staleAfterDays={staleAfterDays} recipePath={recipePath} />
       {/* Cost: consumed, with the basket beneath. */}
-      <div role="cell" className="tabular-nums lg:text-right">
-        <span className="flex items-baseline justify-between gap-2 lg:block">
-          <span className={`lg:hidden ${muted}`}>Cost</span>
-          <span className={line.consumed_cost ? "font-medium" : muted}>
-            {formatCostRange(line.consumed_cost, line.consumed_cost_high)}
-          </span>
+      <CostCell line={line} />
+    </div>
+  );
+}
+
+/** "2 packs", "1–2 packs", or null with none. */
+function packsText(line: CostLine): string | null {
+  if (!line.packs || isZero(line.packs)) return null;
+  const high =
+    line.packs_high && line.packs_high !== line.packs ? `–${stripZeros(line.packs_high)}` : "";
+  return `${stripZeros(line.packs)}${high} ${line.packs === "1" ? "pack" : "packs"}`;
+}
+
+/** The line's cost, "at least" when its recipe is incomplete, with the basket beneath. */
+function CostCell({ line }: { line: CostLine }) {
+  const packs = packsText(line);
+  const floor = line.source_partial && line.consumed_cost ? "at least " : "";
+  return (
+    <div role="cell" className="tabular-nums lg:text-right">
+      <span className="flex items-baseline justify-between gap-2 lg:block">
+        <span className={`lg:hidden ${muted}`}>Cost</span>
+        <span className={line.consumed_cost ? "font-medium" : muted}>
+          {floor}
+          {formatCostRange(line.consumed_cost, line.consumed_cost_high)}
         </span>
-        {line.basket_cost && packs ? (
-          <span className={`block text-xs ${muted}`}>
-            {packs} · {formatCostRange(line.basket_cost, line.basket_cost_high)}
-          </span>
-        ) : null}
-      </div>
+      </span>
+      {line.basket_cost && packs ? (
+        <span className={`block text-xs ${muted}`}>
+          {packs} · {formatCostRange(line.basket_cost, line.basket_cost_high)}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -368,8 +429,34 @@ function QuantityCell({ line }: { line: CostLine }) {
   );
 }
 
-function PriceCell({ line, staleAfterDays }: { line: CostLine; staleAfterDays: number }) {
+function PriceCell({
+  line,
+  staleAfterDays,
+  recipePath,
+}: {
+  line: CostLine;
+  staleAfterDays: number;
+  recipePath: string;
+}) {
   const price = line.price;
+  if (fromRecipe(line) && line.status !== "negligible") {
+    // From a recipe: its source, or why it couldn't be costed. No shelf price,
+    // USDA value or density offer: the fix is in the recipe (issue 526).
+    const costed = line.status === "priced" || line.status === "posted";
+    return (
+      <div role="cell" className="min-w-0">
+        {costed ? (
+          <SourceCell line={line} />
+        ) : (
+          <SourceWords
+            line={line}
+            recipePath={recipePath}
+            conversionWords={<RowWords line={line} />}
+          />
+        )}
+      </div>
+    );
+  }
   return (
     <div role="cell" className="min-w-0">
       {price ? (

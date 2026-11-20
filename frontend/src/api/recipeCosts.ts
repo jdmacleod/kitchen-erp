@@ -7,6 +7,7 @@ import { cmp, formatMoney } from "../lib/decimal";
 import { qs } from "./catalog";
 import { api } from "./client";
 import { recipeKeys, type RecipeIngredient } from "./recipes";
+import type { MakesOut, MakesUnitCost, RecipeLink } from "./recipeSources";
 
 /** "offers" (this week's, 18 X2) is a kitchen's view only, never a stored snapshot. */
 export type CostBasis = "latest" | "average" | "cheapest" | "offers";
@@ -42,6 +43,8 @@ export interface RecipeCostSummary {
   lines_negligible: number;
   /** Lines on a posted price; not in lines_priced. */
   lines_posted?: number;
+  /** Lines costed from a recipe that is itself incomplete (issue 526). */
+  lines_partial?: number;
   /** Some posted price a line rests on is stale. */
   posted_stale?: boolean;
   provisional: boolean;
@@ -102,6 +105,30 @@ export interface CostLine {
   usda_offer?: UsdaLineOffer | null;
   /** Why an unpriced line has no price though one is in sight. */
   hint?: CostLineHint | null;
+  /** Costed from a recipe (issue 526): which, whether it is incomplete, and under which basis. */
+  source_recipe?: RecipeLink | null;
+  source_partial?: boolean;
+  source_basis?: string | null;
+  source_counts?: { priced: number; total: number } | null;
+  source?: CostLineSource | null;
+}
+
+/** What a line from a recipe needs for its words. */
+export interface CostLineSource {
+  recipe: RecipeLink | null;
+  makes: MakesOut | null;
+  /** Where a recipe reference looked; null when it leaves the recipes directory. */
+  target_path: string | null;
+  /** A recipe with the same file name elsewhere. */
+  suggestion: RecipeLink | null;
+  counts: { priced: number; total: number } | null;
+  cycle: CycleHop[];
+}
+
+/** One recipe on a cycle, and how it reaches the next: its file, or an ingredient. */
+export interface CycleHop {
+  recipe: RecipeLink;
+  via_ingredient: { id: string; name: string } | null;
 }
 
 export interface CostLineHint {
@@ -141,6 +168,7 @@ export interface CostCompleteness {
   lines_unmapped: number;
   lines_negligible: number;
   lines_posted?: number;
+  lines_partial?: number;
 }
 
 export interface RecipeCost {
@@ -161,6 +189,8 @@ export interface RecipeCost {
   /** The share of the consumed cost resting on unconfirmed bridges, 0–1. */
   unconfirmed_share: string;
   posted_share?: string;
+  /** Counted cost per display unit of what the recipe makes (issue 526). */
+  makes_unit_cost?: MakesUnitCost | null;
   lines: CostLine[];
 }
 
@@ -224,13 +254,26 @@ export function pricedSentence(priced: number, total: number): string {
  * (07, criterion 16). `partial` is true while any counted line has no cost, and
  * the totals are then only a floor.
  */
-export function known(c: { lines_priced: number; lines_total: number; lines_negligible: number }): {
+export function known(c: {
+  lines_priced: number;
+  lines_total: number;
+  lines_negligible: number;
+  lines_partial?: number;
+}): {
   priced: number;
   counted: number;
   partial: boolean;
+  /** Priced lines costed from a recipe that is itself incomplete (issue 526). */
+  fromPartial: number;
 } {
   const counted = Math.max(c.lines_total - c.lines_negligible, 0);
-  return { priced: c.lines_priced, counted, partial: c.lines_priced < counted };
+  const fromPartial = c.lines_partial ?? 0;
+  return {
+    priced: c.lines_priced,
+    counted,
+    partial: c.lines_priced < counted || fromPartial > 0,
+    fromPartial,
+  };
 }
 
 /** A figure that is only a floor while lines are missing: "at least $20.90". */

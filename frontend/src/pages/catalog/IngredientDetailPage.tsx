@@ -40,6 +40,7 @@ import {
 import { TestBench } from "../../components/catalog/TestBench";
 import { YieldSuggestion } from "../../components/catalog/YieldSuggestion";
 import { CategoryChip } from "../../components/CategoryChip";
+import { MadeByRecipe } from "../../components/cook/MadeByRecipe";
 import { UsedInRecipes } from "../../components/cook/UsedInRecipes";
 import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
 import { AddIngredientToListPanel } from "../../components/plan/AddToListPanel";
@@ -320,6 +321,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
             ) : null}
           </div>
           <div className="flex min-w-0 flex-col gap-6">
+            <MadeByRecipe ingredient={ingredient} />
             <IngredientProducts ingredient={ingredient} />
             <UsedInRecipes ingredientId={ingredient.id} />
           </div>

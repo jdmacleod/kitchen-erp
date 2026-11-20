@@ -41,6 +41,7 @@ from app.schemas.product_codes import ProductCodeList, ProductCodeOut
 from app.services import (
     catalog,
     ingredient_category,
+    ingredient_made_by,
     ingredient_names,
     product_codes,
     product_duplicates,
@@ -133,16 +134,25 @@ async def ingredients_in_text(
 
 @router.get("/ingredients/{ingredient_id}", response_model=IngredientOut)
 async def get_ingredient(ingredient_id: uuid.UUID, _: CurrentUser, db: DbSession) -> IngredientOut:
-    return IngredientOut.model_validate(await catalog.get_ingredient(db, ingredient_id))
+    return await ingredient_made_by.detail_out(db, await catalog.get_ingredient(db, ingredient_id))
 
 
 @router.patch("/ingredients/{ingredient_id}", response_model=IngredientOut)
 async def update_ingredient(
     ingredient_id: uuid.UUID, payload: IngredientUpdate, _: CurrentUser, db: DbSession
 ) -> IngredientOut:
-    """409 measures_in_old_unit: a unit change while measures in the old unit exist."""
+    """409 measures_in_old_unit: a unit change while measures in the old unit exist.
+
+    ``made_by_recipe_id`` (#526): 422 ``recipe_not_found``, ``recipe_missing`` or
+    ``recipe_unreadable``. The link commits first; the recipes on the ingredient
+    then recompute in their own transaction (``recomputed``, ``recompute_failed``),
+    and a link that closes a cycle is kept with a ``recipe_cycle`` warning.
+    """
     await unit_switch.guard_unit_change(db, ingredient_id, payload)
-    return IngredientOut.model_validate(await catalog.update_ingredient(db, ingredient_id, payload))
+    row = await catalog.update_ingredient(db, ingredient_id, payload)
+    if "made_by_recipe_id" not in payload.model_fields_set:
+        return await ingredient_made_by.detail_out(db, row)
+    return await ingredient_made_by.after_link(db, row)
 
 
 @router.post("/ingredients/{ingredient_id}/deactivate", response_model=IngredientOut)

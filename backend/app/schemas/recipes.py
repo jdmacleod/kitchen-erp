@@ -12,6 +12,7 @@ from pydantic import Field, model_validator
 
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.catalog import IngredientCreate, IngredientSummary
+from app.schemas.recipe_sources import MakesOut, MakesUnitCost, RecipeLink
 
 RecipeStatus = Literal["ok", "parse_error", "missing"]
 # Whether every line of the current cost is priced; a recipe with no snapshot is incomplete.
@@ -161,6 +162,12 @@ class RecipeOut(RecipeSummary):
     pins: list[RecipePinOut] = []  # noqa: RUF012
     # The last good parse's steps (0048); null for a recipe indexed before it.
     body: list[BodySection] | None = None
+    # Front matter `yield:` (#526), and the recipes that cost from this one, by
+    # a recipe reference or a made-by ingredient, each once, by title, with the
+    # number of their lines that do.
+    makes: MakesOut | None = None
+    used_in: list[RecipeLink] = []  # noqa: RUF012
+    used_lines: int = 0
 
 
 class IngredientRecipeUse(ApiModel):
@@ -423,13 +430,50 @@ class CostLineHint(ApiModel):
     ingredient_name: str | None = None
 
 
+class SourceCounts(ApiModel):
+    priced: int
+    total: int
+
+
+class CycleHop(ApiModel):
+    """One recipe on a cycle and how it reaches the next: through a recipe
+    reference in its file, or through ``via_ingredient``, an ingredient it uses
+    that the next recipe makes."""
+
+    recipe: RecipeLink
+    via_ingredient: IngredientSummary | None = None
+
+
+class CostLineSourceOut(ApiModel):
+    """The recipe a line costs from (#526), and what its message needs.
+
+    ``target_path`` is where a recipe reference looked (null when it leaves the
+    recipes root); ``suggestion`` a recipe of the same base name elsewhere.
+    ``counts`` are the source's own priced and total lines (``recipe_unpriced``),
+    and ``cycle`` the walk round for ``cycle``.
+    """
+
+    recipe: RecipeLink | None = None
+    makes: MakesOut | None = None
+    target_path: str | None = None
+    suggestion: RecipeLink | None = None
+    counts: SourceCounts | None = None
+    cycle: list[CycleHop] = []  # noqa: RUF012
+
+
 class CostLineOut(ApiModel):
     id: uuid.UUID
     line: RecipeIngredientOut
     yield_mode: YieldMode
     pinned: bool
     status: CostLineStatus
-    failure_code: str | None
+    failure_code: str | None = Field(
+        description="Why the line has no cost, or a cost from a recipe failed: a conversion "
+        "code (no_density, unknown_measure, no_pack, no_qty, no_bunch_weight) or a recipe "
+        "code (no_yield, bad_yield, yield_unit, no_recipe, cycle, recipe_unpriced, "
+        "recipe_unreadable). Each is described in docs/spec/07-phase-3-recipes-and-costing.md, 3D, "
+        "under its own anchor (#failure-no-yield and so on)."
+    )
     quantity: CostQuantity | None
     yield_applied: DecimalStr | None
     yield_assumed: bool  # grossed up at 100% because the ingredient has no yield yet
@@ -444,6 +488,13 @@ class CostLineOut(ApiModel):
     packs_high: DecimalStr | None
     usda_offer: UsdaLineOffer | None = None
     hint: CostLineHint | None = None
+    # Costed from a recipe (#526): which, whether it is incomplete, and the basis
+    # it was costed under when not the table's ("latest" for a kitchen or offers).
+    source_recipe: RecipeLink | None = None
+    source_partial: bool = False
+    source_basis: str | None = None
+    source_counts: SourceCounts | None = None
+    source: CostLineSourceOut | None = None
 
 
 class CostTotals(ApiModel):
@@ -493,6 +544,8 @@ class RecipeCostOut(ApiModel):
     unconfirmed_share: DecimalStr
     # The posted consumed cost's share of counted plus posted, 0–1.
     posted_share: DecimalStr = Decimal(0)
+    # Counted cost per display unit of what the recipe makes (#526).
+    makes_unit_cost: MakesUnitCost | None = None
     lines: list[CostLineOut]
 
 

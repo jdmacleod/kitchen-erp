@@ -8,13 +8,15 @@ import { catalogKeys, qs, type IngredientCreateInput, type IngredientSummary } f
 import { api } from "./client";
 import { inboxKey } from "./inbox";
 import type { CostBasis, RecipeCostSummary } from "./recipeCosts";
+import type { MakesOut, RecipeLink } from "./recipeSources";
 
 // --- types ------------------------------------------------------------------
 
 export type RecipeStatus = "ok" | "parse_error" | "missing";
 export type MountState = "mounted" | "missing" | "empty" | "no_cook_files";
 export type QtyKind = "number" | "range" | "text" | "none";
-export type Resolution = "alias" | "manual" | "unmatched" | "negligible" | "ignored";
+/** "recipe": a recipe reference, `@./basics/simple-syrup{…}`, costed from that recipe (issue 526). */
+export type Resolution = "alias" | "manual" | "unmatched" | "negligible" | "ignored" | "recipe";
 export type Completeness = "complete" | "incomplete";
 export interface RecipeSummary {
   id: string;
@@ -57,6 +59,8 @@ export interface ScanOut {
   missing: number;
   parse_errors: number;
   proposals: number;
+  /** Recipe references whose target isn't there (issue 526). */
+  missing_refs?: { referrer_path: string; ref_path: string; target: string | null }[];
 }
 
 export interface RelinkProposal {
@@ -84,6 +88,9 @@ export interface RecipeIngredient {
   resolution: Resolution;
   ingredient_id: string | null;
   ingredient_name: string | null;
+  /** A recipe reference: the path as written and the recipe it names (issue 526). */
+  ref_path?: string | null;
+  ref_recipe_id?: string | null;
 }
 
 export interface RecipePin {
@@ -124,6 +131,9 @@ export type BodyItem =
       unit: string | null;
       note: string | null;
       seq: number;
+      /** A recipe reference (issue 526): the path as written, and the recipe it links to. */
+      ref_path?: string | null;
+      recipe_id?: string | null;
     }
   | BodyReference
   | { t: "cookware"; name: string; qty: string | null }
@@ -146,6 +156,12 @@ export interface Recipe extends RecipeSummary {
   pins: RecipePin[];
   /** The last good parse's steps; null for a recipe indexed before migration 0048. */
   body: BodySection[] | null;
+  /** Front matter `yield:` (issue 526). */
+  makes?: MakesOut | null;
+  /** Recipes that cost from this one, by a recipe reference or a made-by ingredient. */
+  used_in?: RecipeLink[];
+  /** How many of their lines do. */
+  used_lines?: number;
 }
 
 // --- 3C: the resolve queue, decisions and pins ------------------------------------

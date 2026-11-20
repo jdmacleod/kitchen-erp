@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import {
   formatAmount,
   lineText,
@@ -279,7 +280,17 @@ function Item({ item, ...where }: ItemProps & { item: BodyItem }) {
       const words = quantity(item.qty, item.unit);
       return (
         <span data-testid="step-ingredient" data-seq={item.seq}>
-          <span className="font-semibold">{item.name}</span>
+          {item.recipe_id ? (
+            // A recipe reference (issue 526): the recipe it names.
+            <Link
+              to={`/cook/recipes/${item.recipe_id}`}
+              className={`rounded-sm font-semibold underline ${focusRing}`}
+            >
+              {item.name}
+            </Link>
+          ) : (
+            <span className="font-semibold">{item.name}</span>
+          )}
           {words ? <span className={muted}> {words}</span> : null}
           {item.note ? <span className={muted}> ({item.note})</span> : null}
         </span>

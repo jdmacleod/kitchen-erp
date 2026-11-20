@@ -14,7 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import ApiError
 from app.models import Ingredient, Recipe, RecipeIngredient
 from app.schemas.recipes import RecipeIngredientOut, RecipeListItem, RecipeOut, RelinkProposal
-from app.services import recipe_cost_triggers, recipe_cost_views, recipe_resolution
+from app.services import (
+    recipe_cost_triggers,
+    recipe_cost_views,
+    recipe_resolution,
+    recipe_source_views,
+)
 
 
 async def list_recipes(
@@ -100,8 +105,9 @@ async def recipe_out(db: AsyncSession, row: Recipe) -> RecipeOut:
     columns = {
         name: getattr(row, name)
         for name in RecipeOut.model_fields
-        if name not in ("relink", "ingredients", "pins")
+        if name not in ("relink", "ingredients", "pins", "makes", "used_in", "used_lines")
     }
+    used, used_lines = await recipe_source_views.used_in(db, row.id)
     columns["body"] = _linked_body(row.body, {line.seq: line.ref_recipe_id for line in lines})
     return RecipeOut(
         **columns,
@@ -113,6 +119,9 @@ async def recipe_out(db: AsyncSession, row: Recipe) -> RecipeOut:
             for line in lines
         ],
         pins=await recipe_resolution.pins_out(db, row.id),
+        makes=recipe_source_views.makes_out(row),
+        used_in=used,
+        used_lines=used_lines,
     )
 
 

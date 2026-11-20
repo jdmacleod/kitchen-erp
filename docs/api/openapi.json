@@ -852,6 +852,29 @@
             ],
             "title": "Qty"
           },
+          "recipe_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipe Id"
+          },
+          "ref_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Path"
+          },
           "seq": {
             "title": "Seq",
             "type": "integer"
@@ -2896,6 +2919,11 @@
             "title": "Lines Negligible",
             "type": "integer"
           },
+          "lines_partial": {
+            "default": 0,
+            "title": "Lines Partial",
+            "type": "integer"
+          },
           "lines_posted": {
             "default": 0,
             "title": "Lines Posted",
@@ -3173,6 +3201,7 @@
                 "type": "null"
               }
             ],
+            "description": "Why the line has no cost, or a cost from a recipe failed: a conversion code (no_density, unknown_measure, no_pack, no_qty, no_bunch_weight) or a recipe code (no_yield, bad_yield, yield_unit, no_recipe, cycle, recipe_unpriced, recipe_unreadable). Each is described in docs/spec/07-phase-3-recipes-and-costing.md, 3D, under its own anchor (#failure-no-yield and so on).",
             "title": "Failure Code"
           },
           "hint": {
@@ -3233,6 +3262,52 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CostQuantity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostLineSourceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Basis"
+          },
+          "source_counts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_partial": {
+            "default": false,
+            "title": "Source Partial",
+            "type": "boolean"
+          },
+          "source_recipe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeLink"
               },
               {
                 "type": "null"
@@ -3307,6 +3382,73 @@
           "packs_high"
         ],
         "title": "CostLineOut",
+        "type": "object"
+      },
+      "CostLineSourceOut": {
+        "additionalProperties": false,
+        "description": "The recipe a line costs from (#526), and what its message needs.\n\n``target_path`` is where a recipe reference looked (null when it leaves the\nrecipes root); ``suggestion`` a recipe of the same base name elsewhere.\n``counts`` are the source's own priced and total lines (``recipe_unpriced``),\nand ``cycle`` the walk round for ``cycle``.",
+        "properties": {
+          "counts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cycle": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CycleHop"
+            },
+            "title": "Cycle",
+            "type": "array"
+          },
+          "makes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MakesOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recipe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Path"
+          }
+        },
+        "title": "CostLineSourceOut",
         "type": "object"
       },
       "CostPriceUsed": {
@@ -3887,6 +4029,30 @@
           "items"
         ],
         "title": "CurrentOffers",
+        "type": "object"
+      },
+      "CycleHop": {
+        "additionalProperties": false,
+        "description": "One recipe on a cycle and how it reaches the next: through a recipe\nreference in its file, or through ``via_ingredient``, an ingredient it uses\nthat the next recipe makes.",
+        "properties": {
+          "recipe": {
+            "$ref": "#/components/schemas/RecipeLink"
+          },
+          "via_ingredient": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "recipe"
+        ],
+        "title": "CycleHop",
         "type": "object"
       },
       "DensityOfferOut": {
@@ -6638,6 +6804,16 @@
             ],
             "title": "Keep Room Days"
           },
+          "made_by_recipe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MadeByRecipeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "measures": {
             "default": [],
             "items": {
@@ -6684,6 +6860,38 @@
             "title": "Perishability",
             "type": "string"
           },
+          "recipe_match": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recompute_failed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recompute Failed"
+          },
+          "recomputed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recomputed"
+          },
           "reconcile_state": {
             "default": "not_applicable",
             "enum": [
@@ -6714,6 +6922,14 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LinkWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
           },
           "watch": {
             "default": false,
@@ -7296,6 +7512,18 @@
               }
             ],
             "title": "Keep Room Days"
+          },
+          "made_by_recipe_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Made By Recipe Id"
           },
           "name": {
             "anyOf": [
@@ -9512,6 +9740,35 @@
         "title": "LinkSummaryOut",
         "type": "object"
       },
+      "LinkWarning": {
+        "additionalProperties": false,
+        "description": "A link was made, with something to say: ``recipe_cycle`` names the chain of\ntitles that now goes round (the link is kept; those lines read ``cycle``).",
+        "properties": {
+          "chain": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecipeLink"
+            },
+            "title": "Chain",
+            "type": "array"
+          },
+          "code": {
+            "const": "recipe_cycle",
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "LinkWarning",
+        "type": "object"
+      },
       "LinkedLocationRef": {
         "additionalProperties": false,
         "properties": {
@@ -10092,6 +10349,171 @@
         "title": "LookupState",
         "type": "object"
       },
+      "MadeByRecipeOut": {
+        "additionalProperties": false,
+        "description": "The recipe an ingredient is made by, with what it makes and costs per unit.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "makes_ok": {
+            "title": "Makes Ok",
+            "type": "boolean"
+          },
+          "makes_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Makes Text"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "default": "ok",
+            "enum": [
+              "ok",
+              "parse_error",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit_cost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MakesUnitCost"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "path",
+          "makes_text",
+          "makes_ok"
+        ],
+        "title": "MadeByRecipeOut",
+        "type": "object"
+      },
+      "MakesOut": {
+        "additionalProperties": false,
+        "description": "Front matter `yield:` as read: the text as written, and when it is an amount\nand a mass or volume unit, the amount, its unit, and the same in the\nhousehold's display unit (\"16.9\" \"fl oz\" for 500 ml).",
+        "properties": {
+          "display_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Qty"
+          },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "MakesOut",
+        "type": "object"
+      },
+      "MakesUnitCost": {
+        "additionalProperties": false,
+        "description": "A recipe's counted cost per display unit of what it makes (\"$0.62 per fl oz\").\n\n``partial`` when that cost leaves lines out; ``source_basis`` is \"latest\" when\na kitchen's view or the offers basis read the stored latest cost instead.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "source_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Basis"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "unit",
+          "partial"
+        ],
+        "title": "MakesUnitCost",
+        "type": "object"
+      },
       "ManualPurchaseIn": {
         "additionalProperties": false,
         "properties": {
@@ -10662,6 +11084,18 @@
             "title": "Loser Id",
             "type": "string"
           },
+          "made_by_dropped_recipe_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Made By Dropped Recipe Id"
+          },
           "measures": {
             "items": {
               "$ref": "#/components/schemas/MergeMeasureOut"
@@ -10761,6 +11195,37 @@
           "loser_id"
         ],
         "title": "MergeTarget",
+        "type": "object"
+      },
+      "MissingRecipeRef": {
+        "additionalProperties": false,
+        "properties": {
+          "ref_path": {
+            "title": "Ref Path",
+            "type": "string"
+          },
+          "referrer_path": {
+            "title": "Referrer Path",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "referrer_path",
+          "ref_path",
+          "target"
+        ],
+        "title": "MissingRecipeRef",
         "type": "object"
       },
       "ModelNaming": {
@@ -16783,6 +17248,16 @@
             "title": "Lines",
             "type": "array"
           },
+          "makes_unit_cost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MakesUnitCost"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "min_quality": {
             "anyOf": [
               {
@@ -16905,6 +17380,11 @@
           },
           "lines_negligible": {
             "title": "Lines Negligible",
+            "type": "integer"
+          },
+          "lines_partial": {
+            "default": 0,
+            "title": "Lines Partial",
             "type": "integer"
           },
           "lines_posted": {
@@ -17103,13 +17583,37 @@
             "title": "Raw Name",
             "type": "string"
           },
+          "ref_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Path"
+          },
+          "ref_recipe_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Recipe Id"
+          },
           "resolution": {
             "enum": [
               "alias",
               "manual",
               "unmatched",
               "negligible",
-              "ignored"
+              "ignored",
+              "recipe"
             ],
             "title": "Resolution",
             "type": "string"
@@ -17170,6 +17674,41 @@
           "ingredient_id"
         ],
         "title": "RecipeIngredientOut",
+        "type": "object"
+      },
+      "RecipeLink": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "default": "ok",
+            "enum": [
+              "ok",
+              "parse_error",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "path"
+        ],
+        "title": "RecipeLink",
         "type": "object"
       },
       "RecipeList": {
@@ -17345,6 +17884,16 @@
             "title": "Last Seen At",
             "type": "string"
           },
+          "makes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MakesOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "notes": {
             "anyOf": [
               {
@@ -17423,6 +17972,19 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "used_in": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecipeLink"
+            },
+            "title": "Used In",
+            "type": "array"
+          },
+          "used_lines": {
+            "default": 0,
+            "title": "Used Lines",
+            "type": "integer"
           }
         },
         "required": [
@@ -18856,6 +19418,13 @@
             "title": "Missing",
             "type": "integer"
           },
+          "missing_refs": {
+            "items": {
+              "$ref": "#/components/schemas/MissingRecipeRef"
+            },
+            "title": "Missing Refs",
+            "type": "array"
+          },
           "mounted": {
             "title": "Mounted",
             "type": "boolean"
@@ -19249,9 +19818,23 @@
             "type": "string"
           },
           "reason": {
-            "const": "unmatched",
+            "enum": [
+              "unmatched",
+              "recipe"
+            ],
             "title": "Reason",
             "type": "string"
+          },
+          "recipe_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipe Title"
           }
         },
         "required": [
@@ -19259,6 +19842,25 @@
           "reason"
         ],
         "title": "SkippedLine",
+        "type": "object"
+      },
+      "SourceCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "priced": {
+            "title": "Priced",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "priced",
+          "total"
+        ],
+        "title": "SourceCounts",
         "type": "object"
       },
       "StageResultOut": {
@@ -26068,7 +26670,7 @@
         ]
       },
       "patch": {
-        "description": "409 measures_in_old_unit: a unit change while measures in the old unit exist.",
+        "description": "409 measures_in_old_unit: a unit change while measures in the old unit exist.\n\n``made_by_recipe_id`` (#526): 422 ``recipe_not_found``, ``recipe_missing`` or\n``recipe_unreadable``. The link commits first; the recipes on the ingredient\nthen recompute in their own transaction (``recomputed``, ``recompute_failed``),\nand a link that closes a cycle is kept with a ``recipe_cycle`` warning.",
         "operationId": "update_ingredient_api_v1_ingredients__ingredient_id__patch",
         "parameters": [
           {

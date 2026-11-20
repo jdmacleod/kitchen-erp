@@ -17,7 +17,8 @@ const monthYear = new Intl.DateTimeFormat(undefined, { month: "long", year: "num
  * counts only when no receipt or shelf price exists." Null when no line does.
  */
 export function postedHeader(lines: CostLine[]): string | null {
-  const posted = lines.filter((l) => l.status === "posted");
+  // A line from a recipe that uses a posted price is said apart (issue 526).
+  const posted = lines.filter((l) => l.status === "posted" && !l.source_recipe);
   if (posted.length === 0) return null;
   const dates = posted
     .map((l) => l.price?.observed_at)
