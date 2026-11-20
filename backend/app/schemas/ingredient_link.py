@@ -97,6 +97,9 @@ class MergeOut(ApiModel):
     unit_to: CanonicalUnit
     prices_needing_bridge: int
     measures: list[MergeMeasureOut]
+    # Both were made by a recipe, different ones (#526): the survivor's recipe
+    # stays and this one, the merged ingredient's, no longer makes it.
+    made_by_dropped_recipe_id: uuid.UUID | None = None
 
 
 class DensityOfferOut(ApiModel):

@@ -193,6 +193,12 @@ class LineCost:
     # Priced by this week's offer at that store (the "offers" basis), marked an
     # estimate when the offer's size is the product's.
     offer: OfferPrice | None = None
+    # Costed from another recipe (#526; services/recipe_cost_sources): which
+    # one, whether it is incomplete, and the basis it was costed under when that
+    # differs from the line's ("latest" for a kitchen's view or offers).
+    source_recipe_id: uuid.UUID | None = None
+    source_partial: bool = False
+    source_basis: str | None = None
 
     @property
     def unconfirmed(self) -> bool:

@@ -17,6 +17,8 @@ only, never recipe text.
 
 With no recipe indexed, every entry point is one indexed query that finds
 nothing, so the receipt worker and the price book pay nothing for Phase 3.
+With recipes but no recipe-to-recipe link (#526), one more query finds none,
+and there is no graph read and no referrer expansion.
 
 Which recipes a change reaches:
 
@@ -30,13 +32,16 @@ Which recipes a change reaches:
   product's ingredient (``cheapest`` may now choose it), plus pins to it;
 - prices observed, voided or renormalized: every recipe with a line of the
   observations' products' ingredients, plus snapshots whose lines used them;
-- a merge: the recipes whose rows it repointed.
+- a merge: the recipes whose rows it repointed;
+- and, for each of these, every recipe that costs from it through a recipe
+  reference or a made-by ingredient, transitively, children first (#526).
 """
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import Collection, Iterable
+from dataclasses import dataclass
 
 from sqlalchemy import exists, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,29 +58,96 @@ from app.models import (
     RecipeIngredient,
     RecipePin,
 )
-from app.services import recipe_costing
+from app.services import recipe_cost_sources, recipe_costing
+from app.services.recipe_cost_sources import RecipeGraph
 
 log = get_logger(__name__)
 
 # --- the recompute itself ---------------------------------------------------------------
 
 
-async def _recompute(db: AsyncSession, recipe_ids: Iterable[uuid.UUID], *, commit: bool) -> int:
-    """Recompute the recipes' snapshots, each under its own savepoint. The number
-    of snapshots recomputed."""
-    ids = sorted(set(recipe_ids), key=str)
+@dataclass(slots=True)
+class RecomputeResult:
+    """What a recompute did: recipes recomputed and failed, and snapshots written.
+
+    "Recomputed" means the run was attempted: a referrer of a recipe that failed
+    still recomputes, from that recipe's last stored snapshot.
+    """
+
+    recipes_ok: int = 0
+    recipes_failed: int = 0
+    snapshots: int = 0
+
+
+async def _has_links(db: AsyncSession) -> bool:
+    """Whether any recipe costs from another: a reference, or a made-by ingredient."""
+    found = await db.execute(
+        select(
+            exists().where(RecipeIngredient.ref_recipe_id.is_not(None))
+            | exists().where(Ingredient.made_by_recipe_id.is_not(None))
+        )
+    )
+    return bool(found.scalar())
+
+
+def _with_referrers(graph: RecipeGraph, ids: set[uuid.UUID]) -> set[uuid.UUID]:
+    """The recipes and, transitively, every recipe that costs from one of them."""
+    costs_from: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for referrer, sources in graph.edges.items():
+        for source in sources:
+            costs_from.setdefault(source, set()).add(referrer)
+    seen = set(ids)
+    todo = list(ids)
+    while todo:
+        for referrer in costs_from.get(todo.pop(), ()):
+            if referrer not in seen:
+                seen.add(referrer)
+                todo.append(referrer)
+    return seen
+
+
+async def _recompute(
+    db: AsyncSession, recipe_ids: Iterable[uuid.UUID], *, commit: bool
+) -> RecomputeResult:
+    """Recompute the recipes' snapshots, each under its own savepoint.
+
+    With recipe-to-recipe links (#526) the set grows to every recipe that costs
+    from one of them, transitively, and runs children first, so a referrer reads
+    its source's fresh snapshot; a cycle's members run together, by ``str(id)``.
+    Without links there is no graph query and no expansion.
+    """
+    out = RecomputeResult()
+    ids = set(recipe_ids)
     if not ids:
-        return 0
-    done = 0
-    for recipe_id in ids:
+        return out
+    graph: RecipeGraph | None = None
+    order = sorted(ids, key=str)
+    if await _has_links(db):
+        graph = await recipe_cost_sources.recipe_graph(db)
+        ids = _with_referrers(graph, ids)
+        order = graph.children_first(ids)
+        for members in graph.cycles():
+            if ids.intersection(members):
+                log.warning("recipe_cycle members=%s", [str(m) for m in sorted(members, key=str)])
+    failed: set[uuid.UUID] = set()
+    for recipe_id in order:
+        if graph is not None and (stale := graph.edges.get(recipe_id, set()) & failed):
+            log.warning(
+                "recipe cost recompute reads a source that failed",
+                extra={"recipe_id": str(recipe_id), "source_ids": sorted(map(str, stale))},
+            )
         try:
             async with db.begin_nested():
-                done += await recipe_costing.recompute_recipe_core(db, recipe_id)
+                done = await recipe_costing.recompute_recipe_core(db, recipe_id, graph=graph)
+            out.snapshots += done
+            out.recipes_ok += bool(done)  # a recipe that no longer exists isn't counted
         except Exception:
             log.exception("recipe cost recompute failed", extra={"recipe_id": str(recipe_id)})
+            out.recipes_failed += 1
+            failed.add(recipe_id)
     if commit:
         await db.commit()
-    return done
+    return out
 
 
 async def _find(db: AsyncSession, what: str, finder) -> set[uuid.UUID]:
@@ -88,7 +160,7 @@ async def _find(db: AsyncSession, what: str, finder) -> set[uuid.UUID]:
         return set()
 
 
-async def _guarded(db: AsyncSession, what: str, finder, *, commit: bool) -> int:
+async def _guarded(db: AsyncSession, what: str, finder, *, commit: bool) -> RecomputeResult:
     """Find the affected recipes, then recompute them."""
     return await _recompute(db, await _find(db, what, finder), commit=commit)
 
@@ -169,7 +241,7 @@ async def after_recipe_changed(db: AsyncSession, recipe_id: uuid.UUID, *, commit
 
 async def after_recipes_changed(
     db: AsyncSession, recipe_ids: Iterable[uuid.UUID], *, commit: bool = False
-) -> int:
+) -> RecomputeResult:
     return await _recompute(db, recipe_ids, commit=commit)
 
 
@@ -180,14 +252,14 @@ async def after_pin_changed(db: AsyncSession, recipe_id: uuid.UUID, *, commit: b
 
 async def after_merge(
     db: AsyncSession, recipe_ids: Iterable[uuid.UUID], *, commit: bool = False
-) -> int:
+) -> RecomputeResult:
     """A product or ingredient merge repointed rows of these recipes (07, 3C)."""
     return await _recompute(db, recipe_ids, commit=commit)
 
 
 async def after_names_changed(
     db: AsyncSession, name_norms: Collection[str], *, commit: bool = False
-) -> int:
+) -> RecomputeResult:
     """An alias decision settled these normalized names: every recipe with a line of one."""
     names = {n for n in name_norms if n}
 
@@ -253,14 +325,14 @@ async def uncosted_recipes(db: AsyncSession) -> set[uuid.UUID]:
 
 async def after_lines_settled(
     db: AsyncSession, before: Collection[uuid.UUID], *, commit: bool = False
-) -> int:
+) -> RecomputeResult:
     """Recompute ``settled_recipes``."""
     return await _recompute(db, await settled_recipes(db, before), commit=commit)
 
 
 async def after_ingredient_bridge_changed(
     db: AsyncSession, ingredient_id: uuid.UUID, *, commit: bool = False
-) -> int:
+) -> RecomputeResult:
     """A density, named measure or canonical unit of the ingredient changed
     (criterion 25): every recipe with a line of it, and no other."""
 
@@ -303,7 +375,7 @@ async def recipes_of_product(
 
 async def after_product_bridge_changed(
     db: AsyncSession, product_id: uuid.UUID, *, commit: bool = False
-) -> int:
+) -> RecomputeResult:
     """A pack, pieces or density override of the product changed, or it moved to
     another ingredient: every recipe with a line of its ingredient, every recipe
     pinned to it, and every snapshot whose lines used it."""
@@ -320,7 +392,7 @@ async def after_product_bridge_changed(
 
 async def after_prices_changed(
     db: AsyncSession, observation_ids: Collection[uuid.UUID], *, commit: bool = False
-) -> int:
+) -> RecomputeResult:
     """Observations were added, voided or renormalized: every snapshot whose lines
     used one, and (for ``latest``, ``cheapest`` and ``average``) every recipe with
     a line of an ingredient their products fulfil."""
@@ -339,7 +411,7 @@ async def after_prices_changed(
 
 async def after_purchase_changed(
     db: AsyncSession, purchase_id: uuid.UUID, *, commit: bool = False
-) -> int:
+) -> RecomputeResult:
     """A purchase was committed, recommitted or reopened: its lines' prices start
     or stop qualifying together, so every observation of its lines counts as changed."""
 
@@ -356,7 +428,7 @@ async def after_purchase_changed(
             ids = await observations()
     except Exception:
         log.exception("recipe cost trigger failed", extra={"trigger": "purchase_changed"})
-        return 0
+        return RecomputeResult()
     return await after_prices_changed(db, ids, commit=commit)
 
 

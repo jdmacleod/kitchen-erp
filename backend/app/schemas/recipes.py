@@ -469,6 +469,9 @@ class CostCompleteness(ApiModel):
     lines_unmapped: int
     lines_negligible: int
     lines_posted: int = 0  # not in lines_priced
+    # Lines costed from a recipe that is itself incomplete (#526): counted in
+    # lines_priced or lines_posted, and a recipe with any is not complete.
+    lines_partial: int = 0
 
 
 class RecipeCostOut(ApiModel):
@@ -528,6 +531,7 @@ class RecipeCostSummary(ApiModel):
     lines_total: int
     lines_negligible: int  # left out of completeness (07, criterion 16)
     lines_posted: int = 0  # not in lines_priced, so a recipe with one is incomplete
+    lines_partial: int = 0  # costed from an incomplete recipe (#526): incomplete too
     # Some line rests on a posted price older than stale_after_days ("some stale").
     posted_stale: bool = False
     provisional: bool
@@ -535,8 +539,12 @@ class RecipeCostSummary(ApiModel):
 
     @property
     def complete(self) -> bool:
-        """Every line that counts is priced; negligible lines don't count."""
-        return self.lines_priced + self.lines_negligible >= self.lines_total
+        """Every line that counts is priced, and none from an incomplete recipe;
+        negligible lines don't count."""
+        return (
+            self.lines_priced + self.lines_negligible >= self.lines_total
+            and self.lines_partial == 0
+        )
 
 
 class RecipeListItem(RecipeSummary):

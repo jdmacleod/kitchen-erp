@@ -58,7 +58,7 @@ async def test_a_rebuild_stopped_part_way_is_found_again(
     await indexed(admin_client, recipes_repo, "harbor-porridge.cook", PORRIDGE)
     await owner_conn.execute("UPDATE price_norm SET convert_version = '1'")
 
-    async def stops(*_args) -> int:
+    async def stops(*_args, **_kw) -> int:
         raise RuntimeError("the deploy stopped")
 
     monkeypatch.setattr(recipe_costing, "recompute_recipe_core", stops)

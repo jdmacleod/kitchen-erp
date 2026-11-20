@@ -22,6 +22,7 @@ import pytest
 
 from app.core.db import get_sessionmaker
 from app.services import recipe_cost_triggers, recipe_costing
+from app.services.recipe_cost_triggers import RecomputeResult
 from tests.pricebook_helpers import make_product, shelf
 from tests.recipes_helpers import TempRepo, recipes_repo  # noqa: F401
 from tests.test_recipe_costing import (
@@ -62,6 +63,8 @@ title: Harbor roots
 
 Roast @dragon root{2} with @barley{100%g}.
 """
+
+NIL = RecomputeResult()  # nothing recomputed
 
 
 # --- helpers ------------------------------------------------------------------------------
@@ -503,20 +506,20 @@ async def test_the_hooks_are_no_ops_without_recipes(
     )
     assert r.status_code == 200, r.text
     async with get_sessionmaker()() as db:
-        assert await recipe_cost_triggers.after_prices_changed(db, [uuid.UUID(priced["id"])]) == 0
-        assert await recipe_cost_triggers.after_recipe_changed(db, uuid.uuid4()) == 0
-        assert await recipe_cost_triggers.after_names_changed(db, ["barley"]) == 0
-        assert await recipe_cost_triggers.after_lines_settled(db, frozenset()) == 0
+        assert await recipe_cost_triggers.after_prices_changed(db, [uuid.UUID(priced["id"])]) == NIL
+        assert await recipe_cost_triggers.after_recipe_changed(db, uuid.uuid4()) == NIL
+        assert await recipe_cost_triggers.after_names_changed(db, ["barley"]) == NIL
+        assert await recipe_cost_triggers.after_lines_settled(db, frozenset()) == NIL
         assert (
             await recipe_cost_triggers.after_ingredient_bridge_changed(
                 db, uuid.UUID(bag["ingredient"]["id"])
             )
-            == 0
+            == NIL
         )
         assert (
-            await recipe_cost_triggers.after_product_bridge_changed(db, uuid.UUID(bag["id"])) == 0
+            await recipe_cost_triggers.after_product_bridge_changed(db, uuid.UUID(bag["id"])) == NIL
         )
-        assert await recipe_cost_triggers.after_merge(db, []) == 0
+        assert await recipe_cost_triggers.after_merge(db, []) == NIL
         await db.rollback()
     assert await owner_conn.fetchval("SELECT count(*) FROM recipe_cost_snapshot") == 0
 
@@ -533,7 +536,7 @@ async def test_a_failing_recompute_is_logged_and_the_change_still_lands(
     bowl = await indexed(admin_client, recipes_repo, "harbor-bowl.cook", BOWL)
     before = await computed_at(owner_conn, bowl["id"])
 
-    async def boom(db, recipe_id):
+    async def boom(db, recipe_id, **_):
         raise RuntimeError("synthetic failure")
 
     monkeypatch.setattr(recipe_costing, "recompute_recipe_core", boom)

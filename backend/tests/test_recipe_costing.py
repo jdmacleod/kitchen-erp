@@ -194,6 +194,7 @@ async def test_19_all_lines_priced_exact_under_each_basis(
         "lines_unmapped": 0,
         "lines_negligible": 0,
         "lines_posted": 0,
+        "lines_partial": 0,
     }
     assert latest["unconfirmed_share"] == "0.0000"
 
@@ -381,6 +382,7 @@ async def test_22_unpriced_unconvertible_and_unmapped_are_counted_and_left_out_o
         "lines_unmapped": 1,
         "lines_negligible": 0,
         "lines_posted": 0,
+        "lines_partial": 0,
     }
     assert body["totals"]["consumed_cost"] == "0.8000"
     assert body["totals"]["basket_cost"] == "4.0000"
@@ -780,6 +782,7 @@ async def test_the_list_carries_the_latest_cost_once_a_snapshot_exists(
         "lines_total": 3,
         "lines_negligible": 0,
         "lines_posted": 0,
+        "lines_partial": 0,
         "posted_stale": False,
         "provisional": False,
         "computed_at": listed["computed_at"],
