@@ -139,9 +139,11 @@ make seed-examples                              # copies examples/recipes/ into 
 docker compose exec api kerp recipes rescan     # or wait for the worker's next scan
 ```
 
-The fifteen examples are public, MIT-licensed Cooklang recipes (pancakes, a
+Fifteen of the examples are public, MIT-licensed Cooklang recipes (pancakes, a
 risotto, a green curry, a pizza and its dough, breads, a soup, a sorbet); their
-sources and what was changed are in `examples/recipes/README.md`. The copy never
+sources and what was changed are in `examples/recipes/README.md`. Two more, a
+simple syrup and a lemonade that costs its syrup from it, show a recipe
+reference. The copy never
 overwrites a `data/recipes/.git` directory, so a real repository there is left
 alone. Recipes then appear under Cook, each line's ingredient name is matched to
 your catalog or waits on the resolve page, and the cost table shows what the price

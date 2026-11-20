@@ -1,7 +1,7 @@
 # Phase 3 acceptance audit
 
-Each criterion from `docs/spec/07-phase-3-recipes-and-costing.md` (1–33, with 15a
-and 27a) and each UI-7 criterion from `docs/spec/11-ui-acceptance-criteria.md`
+Each criterion from `docs/spec/07-phase-3-recipes-and-costing.md` (1–33, with 15a,
+27a and 27b) and each UI-7 criterion from `docs/spec/11-ui-acceptance-criteria.md`
 (7.1–7.19), with the test or procedure that demonstrates it. Backend tests live
 under `backend/tests/`, frontend unit tests under `frontend/src/test/`, browser
 tests under `e2e/tests/`. The browser tests run against the example recipes in
@@ -40,6 +40,7 @@ backend tests index are the invented dishes under
 | 26 | Truncating `recipe_cost_snapshot` and `kerp recompute-costs` reproduces every figure | `test_recipe_costing.py::test_26_truncate_and_recompute_costs_reproduces_every_figure`, `::test_the_runtime_role_may_truncate_the_cost_tables`, `::test_migration_0045_round_trips` |
 | 27 | A pinned line is costed only from the pinned product and reports unpriced when it has no qualifying price | `test_recipe_costing.py::test_27_a_pinned_line_is_costed_only_from_the_pin` |
 | 27a | Uncommitted, voided and inactive-location prices never cost a line; a stale price does and is reported stale; a posted price only as the last resort, marked posted and uncounted (#523) | `test_recipe_costing.py::test_27a_uncommitted_voided_and_inactive_prices_never_cost_a_line_and_real_beats_posted`, `::test_27a_a_line_with_only_a_posted_price_takes_it_marked_posted_and_uncounted`, `::test_min_quality_narrows_the_qualifying_prices`, `test_recipe_cost_posted.py` |
+| 27b | A recipe reference or a made-by ingredient costs a line from the source recipe scaled by what it makes; an incomplete source makes the referrer incomplete; cycles read `cycle`; a source's price change reaches its referrers (#526) | `test_recipe_cost_sources.py`, `test_recipe_cost_refs_triggers.py`, `test_recipe_refs_index.py`, `test_recipe_refs_api.py`, `cook-recipe-references.test.tsx` |
 | 28 | Resolving an unmapped line from the recipe page writes the alias and updates the cost without a reload | `frontend/src/test/cook-cost-table.test.tsx` ("resolves an unmapped line from its combobox, refreshes the cost and shows the Notice"); the server side in `test_recipe_cost_triggers.py::test_an_alias_decision_recomputes_the_recipes_using_the_name_and_no_other`; against the stack, from the resolve page, `e2e/tests/recipes.spec.ts` ("resolving a name on the resolve page writes the spelling and the recipe page shows the ingredient") |
 | 29 | Switching basis changes the figures and shows which prices were used | `frontend/src/test/cook-recipe-page.test.tsx` ("the basis control (UI-7.8)"); `test_recipe_costing.py::test_19_all_lines_priced_exact_under_each_basis`, `::test_lines_show_prices_and_quantities_in_display_units` (product, display price and quantity per line); `e2e/tests/recipes.spec.ts` ("the recipe page shows the cost table with a line per ingredient and a basis control in the URL") |
 | 30 | A dirty recipe shows the marker on the list and page, and its snapshot is labelled provisional | `frontend/src/test/cook-recipes.test.tsx` ("carries every badge in words and marks a provisional snapshot"), `frontend/src/test/cook-recipe-page.test.tsx` ("labels a provisional snapshot with its reason"); `test_recipe_cost_triggers.py::test_24_a_dirty_file_costs_provisionally_and_committing_it_clears_the_flag`; "Uncommitted" on every example in `e2e/tests/recipes.spec.ts` (the mount has no `.git`) |

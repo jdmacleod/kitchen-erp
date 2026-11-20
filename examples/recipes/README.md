@@ -1,13 +1,16 @@
 # Example recipes
 
-Fifteen public Cooklang recipes, so that a fresh Kitchen ERP deployment has
+Seventeen Cooklang recipes, so that a fresh Kitchen ERP deployment has
 something to index and cost before a household points `RECIPES_PATH` at its own
 repository (`docs/spec/07`, prerequisites). `make seed-examples` copies them into
 `data/recipes/`; the demo and e2e Compose stacks mount this directory directly.
 
-Nothing here comes from any household's own recipes. Every file is taken from a
-public repository under the MIT licence, listed below with the commit it was
-fetched at. The licence texts are in `../LICENSES/`.
+Nothing here comes from any household's own recipes. Fifteen files are taken
+from public repositories under the MIT licence, listed below with the commit
+each was fetched at; the licence texts are in `../LICENSES/`. Two were written
+for this repository, under its own licence, to show a recipe reference:
+`basics/simple-syrup` says what it makes (`yield: 500 ml`), and `drinks/lemonade`
+costs its syrup from it with `@../basics/simple-syrup{60%ml}`.
 
 | Source repository | Commit | Licence | Files taken |
 |---|---|---|---|
@@ -27,9 +30,9 @@ fetched at. The licence texts are in `../LICENSES/`.
 - Older `>> key: value` metadata was converted to `---` front matter. Every file
   carries `title`, `servings`, `tags` and `source` (the source repository).
 - Cooklang recipe references (`@./Shared/Vinaigrette{}`) were replaced with the
-  ingredients themselves: Kitchen ERP's parser reads such a reference as an
-  ingredient named `./Shared/Vinaigrette`, which would sit in the resolve queue
-  for ever.
+  ingredients themselves, when Kitchen ERP could not yet read them. It can now
+  (#526); the replaced files stay as they are, and the two files written here
+  show the form.
 - Size words became notes (`@tomatoes{3}(large, ripe)` rather than
   `@tomatoes{3%large}`), so the quantity converts. Units like `pinch`, `clove`,
   `sprigs` and `balls` stay as written: the cost table reports those lines as not

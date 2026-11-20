@@ -261,11 +261,31 @@ quantity, unit text, and note (`@name{qty}(note)`). Timers may be anonymous
 (`~{3%minutes}`). Quantities parse to number, range, or text without loss;
 `1/2`, `1 1/2`, `¾`, `2½`, `2-3`, `2 to 3`, and `some` are all covered (Phase 3
 review, 2026-10-09). The unit text is passed to the 1B unit parser; a measure
-label such as `clove` is kept as text for 3C. A Cooklang recipe reference
-(`@./Shared/Vinaigrette{50%ml}`) is parsed as an ingredient named
-`./Shared/Vinaigrette`; supporting references is a follow-up (TODOS.md,
-"Cooklang recipe references"), and the example recipes avoid them (Phase 3
-build, 2026-10-10).
+label such as `clove` is kept as text for 3C.
+
+A Cooklang recipe reference, `@./basics/simple-syrup{1%fl oz}` (the spec's
+`@./path{qty%unit}`), is an ingredient line whose `ref_path` is the path as
+written and whose name is the path's base name (#526, rulings S1–S4,
+2026-11-17). The braceless form stays text. Its row has resolution `recipe` and
+no ingredient, so it never waits in the resolve queue, the vocabulary report
+leaves it out, and a shopping list skips it as made at home. After each scan
+every reference is linked by path: the target is the written path relative to
+the referring file's directory, normalized, with `.cook` added, matched against
+a recipe that isn't missing. A path that leaves the recipes root names nothing.
+Links follow paths only: a moved target unlinks its referrers until the
+referring file is edited, and a recipe created at the old path links them
+again. `kerp recipes rescan` prints each missing target; `kerp recipes lint`
+reports missing targets, paths outside the root, cycles of references, and a
+`yield:` that doesn't parse on a referenced recipe (`--strict` fails on them).
+
+Front matter `yield:` says what one batch makes (ruling S1): an amount above
+zero and a mass or volume unit, `yield: 500 ml`, read with the unit parser into
+`recipe.makes_qty` and `makes_unit`. The text as written is kept in
+`makes_text`, so a count (`yield: 12 pieces`), a range or a word indexes as text
+only and is reported only where a reference needs it. Code and the UI call it
+"makes", so it never reads as an ingredient's trim yield. After the upgrade
+that added these (migration 0071), `kerp recipes rescan --reparse` re-reads
+unchanged files.
 
 References within one file follow the cooklang-rs `&` extensions (issue 367):
 
@@ -427,6 +447,48 @@ to use it"), the only posted price is at a store outside this kitchen (in a
 kitchen's view: active stores and products, any kitchen, any quality), or the
 pinned product now sits under another ingredient (#525).
 
+### Lines costed from a recipe
+
+A line costs from another recipe in two cases (#526, rulings S2–S4): a recipe
+reference, and (route b) a line on an ingredient whose `made_by_recipe_id`
+names the recipe that makes it, when no real or posted product price qualifies
+and the line ended unpriced, or unconvertible only at the canonical conversion.
+A product price always wins.
+
+Cycles are found first, as strongly connected components of the link graph
+(referrer to referenced recipe, and referrer to the made-by recipe of a line's
+ingredient), before any snapshot is read: a line whose source is in the
+referrer's own component is `cycle`. Recursion only leaves a component, so it
+ends; there is no depth limit.
+
+The source is costed under the referrer's basis, window and quality floor: its
+snapshot of the current `costing_version`, or one computed on demand in the
+referrer's transaction. A kitchen's view, and the `offers` basis, cost it
+unsaved under `latest` with the same kitchen, and the line says so
+(`source_basis`). The line's quantity is converted to the source's makes unit
+(a reference within one dimension; route b also through the ingredient's
+density and measures) and `factor = qty / makes_qty`, never quantized; the
+line's cost is factor times the source's consumed cost, quantized once, and its
+basket cost is the same, since a batch made for many uses is not charged whole.
+A source with any posted part makes the line `posted`, at factor times counted
+plus posted. A source that is incomplete marks the line `source_partial`;
+`lines_partial` counts them and a recipe with any is not complete.
+
+Every line routed to a recipe records `source_recipe_id`, failures included.
+The failure codes:
+
+- <a id="failure-no-yield"></a>`no_yield` (unconvertible): the source has no `yield:`.
+- <a id="failure-bad-yield"></a>`bad_yield` (unconvertible): its `yield:` isn't an amount above zero and a mass or volume unit.
+- <a id="failure-yield-unit"></a>`yield_unit` (unconvertible): a reference line's unit can't reach the yield's (route b keeps the conversion's own code, such as `no_density`).
+- <a id="failure-no-recipe"></a>`no_recipe` (unmapped): no recipe at the path, a path outside the root, or a made-by recipe whose file is gone.
+- <a id="failure-cycle"></a>`cycle` (unpriced): the source costs from the referrer, directly or through others.
+- <a id="failure-recipe-unpriced"></a>`recipe_unpriced` (unpriced): the source has no counted or posted cost.
+- <a id="failure-recipe-unreadable"></a>`recipe_unreadable` (unpriced): the source's file doesn't parse.
+
+Every trigger recomputes, with the recipes it reaches, every recipe that costs
+from one of them, transitively and children first. `COSTING_VERSION` 2 marks
+this.
+
 Costing is household-wide: every qualifying price counts, whichever kitchen's
 vendors recorded it (Phase 3 review, 2026-10-09, settling UI review T8 of
 2026-09-25). Phase 4 adds a per-kitchen filter with the kitchen switcher; until
@@ -511,6 +573,11 @@ counts only on the issues.
     `stale_after_days` does, and its line reports it stale. A posted price
     costs a line only as the last resort, marked `posted`, never in the
     counted totals or history (amended by the ruling on #523, 2026-11-17).
+27b. A recipe reference and a made-by ingredient cost a line from the source
+    recipe's counted cost scaled by what it makes; an incomplete source makes
+    the referrer incomplete; a cycle is `cycle` even with snapshots stored; a
+    price change on the source's ingredient recomputes the source, then the
+    referrer (#526).
 
 ## 3E — Recipe screens
 
