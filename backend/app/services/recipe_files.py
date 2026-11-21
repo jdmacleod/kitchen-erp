@@ -126,9 +126,12 @@ def _ingredient_rows(parsed: ParsedRecipe) -> list[RecipeIngredient]:
                 note=ref.note,
                 # The negligible-name list is applied by the 3C lookup after the scan.
                 negligible=quantity.kind in ("none", "text"),
-                resolution="unmatched",
+                # A recipe reference names a recipe, not an ingredient (#526): it
+                # never waits in the resolve queue, which reads `unmatched` only.
+                resolution="recipe" if ref.ref_path else "unmatched",
                 ingredient_id=None,
                 yield_mode="auto",
+                ref_path=ref.ref_path,
             )
         )
     return rows

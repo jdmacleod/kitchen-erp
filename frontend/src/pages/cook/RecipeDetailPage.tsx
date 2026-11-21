@@ -19,6 +19,7 @@ import {
 import { CostTable, CostTotals } from "../../components/cook/CostTable";
 import { hasPosted } from "../../components/cook/posted";
 import { RecipeBadges } from "../../components/cook/RecipeBadges";
+import { MakesMeta, UsedIn, YieldHint } from "../../components/cook/RecipeMakes";
 import { RemoveRecipe } from "../../components/cook/RemoveRecipe";
 import { RenderedRecipe } from "../../components/cook/RenderedRecipe";
 import { RescanButton } from "../../components/cook/RescanButton";
@@ -167,6 +168,12 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
           <span>Serves {servings}</span>
         </>
       ) : null}
+      {recipe.makes?.text ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <MakesMeta recipe={recipe} />
+        </>
+      ) : null}
       <span aria-hidden="true">·</span>
       <span>
         Indexed{" "}
@@ -212,6 +219,7 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
         </Alert>
       ) : null}
       {recipe.status === "missing" ? <MissingAlert recipe={recipe} /> : null}
+      <YieldHint recipe={recipe} />
       {addingToList ? (
         <div className="mb-4">
           <AddRecipeToListPanel recipe={recipe} onClose={() => setAddingToList(false)} />
@@ -278,6 +286,7 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
               )}
             </>
           )}
+          <UsedIn recipe={recipe} />
         </div>
       </div>
     </>

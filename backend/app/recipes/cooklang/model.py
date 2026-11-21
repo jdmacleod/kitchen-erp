@@ -70,6 +70,11 @@ class IngredientRef:
     # `@white wine|wine{}`: the name the step shows instead (cooklang-rs's alias
     # extension). The ingredient is `raw_name`; the alias never names one.
     alias: str | None = None
+    # `@./basics/simple-syrup{1%fl oz}`: a recipe reference (the Cooklang
+    # spec's form), costed from that recipe (#526). `ref_path` is the path as
+    # written, relative to this file and without `.cook`; `raw_name` is its
+    # base name. Not the `@&` kind above, which names this file's own parts.
+    ref_path: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +155,12 @@ class Recipe:
     title: str | None = None
     servings: Decimal | None = None
     servings_text: str | None = None
+    # Front matter `yield: 500 ml` (#526, ruling S1): what one batch makes, as
+    # an amount and a unit code. `makes_text` is the value as written, kept
+    # when it doesn't parse ("12 pieces") so a message can quote it.
+    makes_qty: Decimal | None = None
+    makes_unit: str | None = None
+    makes_text: str | None = None
 
     @property
     def steps(self) -> tuple[Step, ...]:

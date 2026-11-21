@@ -463,7 +463,10 @@ async def test_the_detail_lists_ingredient_rows_with_decimals_as_strings(
         "resolution",
         "ingredient_id",
         "ingredient_name",
+        "ref_path",  # a recipe reference's path and target (#526)
+        "ref_recipe_id",
     }
+    assert thighs["ref_path"] is None and thighs["ref_recipe_id"] is None
     assert thighs["qty_kind"] == "range" and thighs["qty"] == "2" and thighs["qty_high"] == "3"
     assert thighs["note"] == "skin on" and thighs["section"] is None
     assert onion["qty"] == "0.5" and onion["unit"] is None and onion["unit_text"] is None

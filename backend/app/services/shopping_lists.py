@@ -538,6 +538,17 @@ async def add_from_recipe(  # noqa: C901
         # line still adds its item, with the text as the note (17, 4A).
         if line.resolution in ("negligible", "ignored"):
             continue
+        if line.resolution == "recipe":
+            # Made at home from another recipe (#526): never bought, never a pin's.
+            made = await db.get(Recipe, line.ref_recipe_id) if line.ref_recipe_id else None
+            skipped.append(
+                SkippedLine(
+                    raw_name=line.raw_name,
+                    reason="recipe",
+                    recipe_title=made.title if made is not None else None,
+                )
+            )
+            continue
         product = None
         pin = pins.get(line.name_norm)
         if pin is not None:

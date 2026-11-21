@@ -126,9 +126,11 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 When it lands, retire Tidy the catalog's `product_move` check (`services/cleanup_moves.py`, `catalog/specificity.py`, Wave 2), which stands in for it by moving products to the more specific ingredient.
 
+A second measured case came on 2026-11-19 (#525 comment): one accepted product move emptied a generic ingredient and left its lines unpriced, which no pin can cover. The Depends-on below is met; the wave that builds `parent_id` is still to be planned.
+
 **Effort:** L (human) / M (CC)
-**Priority:** P3
-**Depends on:** A second measured recipe line that a pin can't reasonably cover (#525 stays open for it)
+**Priority:** P2
+**Depends on:** Met 2026-11-19 (#525): a second measured recipe line that a pin can't cover
 
 ### USDA attribute names and FoodOn identifiers for the usda tier
 
@@ -144,17 +146,41 @@ When it lands, retire Tidy the catalog's `product_move` check (`services/cleanup
 
 ## Recipes
 
-### Cooklang recipe references
+### Count yields as pieces
 
-**What:** Parse `@./Shared/Vinaigrette{50%ml}` as a reference to another recipe in the repository, cost it from that recipe's snapshot scaled to the quantity, and show it as a link on the recipe page.
+**What:** Read `yield: 12 pieces` as a recipe that makes 12 `each`, so a reference such as `@./basics/dumplings{3}` costs 3 of 12.
 
-**Why:** Cooklang's references let a sauce or a stock be written once; today the parser reads one as an ingredient named `./Shared/Vinaigrette`, which goes to the resolve queue as an unmatched name.
+**Why:** Recipe references (#526) scale only by mass and volume yields. 65 of the household's 70 `yield:` keys are counts, which index as text today and are reported only when a reference needs them.
 
-**Context:** Noted in `07`, 3B at the Phase 3 build (2026-10-10). The example recipes in `examples/recipes/` avoid references (their README says which were replaced). Needs a reference kind on `recipe_ingredient` pointing at the other recipe, the resolver skipping references, costing that follows the referenced snapshot and reports the line incomplete when that recipe is, and a cycle guard. References within one file (`@&`, issue 367) are done: `app/recipes/cooklang/references.py` reads the modifier, and the parser's `Reference` item is where a recipe reference would go too.
+**Context:** `app/recipes/cooklang/makes.py` refuses a count (`not_mass_or_volume`) on purpose: no reference to a counted recipe exists yet. Allowing `each` makes needs the reference line's count unit too, and `kerp recipes lint` already names an unparsed yield on a referenced recipe.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** A recipe reference to a recipe counted in pieces
+
+### Shopping lists expand recipe references
+
+**What:** Adding a cocktail to a list also adds its syrup's ingredients, scaled by the share of a batch it uses.
+
+**Why:** A recipe reference is skipped as "make <title>" today (#526), so the sugar for the syrup isn't on the list.
+
+**Context:** `shopping_lists.add_recipe` skips `recipe` lines with reason `recipe`. Expansion needs the same scaling as costing (`recipe_cost_sources`), a choice between a whole batch and the share, and a guard against cycles (the link graph has one).
 
 **Effort:** M (human) / S (CC)
 **Priority:** P3
-**Depends on:** A household recipe that uses a reference
+**Depends on:** Phase 4 shopping-list work picking it up
+
+### Route (b) opt-out and whole-batch charging
+
+**What:** A per-ingredient or per-line way to turn off costing from the recipe that makes an ingredient, or to charge a whole batch rather than the share used.
+
+**Why:** Syrups are made for many drinks, so a line takes its share (#526). Stocks and doughs may be made for one dish, where the whole batch is the honest cost.
+
+**Context:** Route (b) costs a line from `ingredient.made_by_recipe_id` when no product price qualifies (`recipe_cost_sources`); the basket adds the same share as consumed.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** House stock, sauce or dough recipes linked to their ingredients
 
 ### Choosing one USDA density per ingredient
 

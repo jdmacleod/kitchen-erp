@@ -359,6 +359,9 @@ class MergePreview:
     unit_to: str
     prices_needing_bridge: int
     measures: list[MergeMeasure] = field(default_factory=list)
+    # Both made by a recipe, different ones (#526): the survivor's stays and
+    # this one, the loser's, is dropped.
+    made_by_dropped_recipe_id: uuid.UUID | None = None
 
 
 async def _failing(db: AsyncSession, ingredient_ids: list[uuid.UUID]) -> int:
@@ -492,12 +495,15 @@ async def _merge_in_session(  # noqa: C901, PLR0915
         await apply_standard_entry(db, survivor, entry)
     else:
         await add_generated_spellings(db, survivor)
-    # 5. The loser leaves.
+    # 5. The recipe that makes it carries over when the survivor has none (#526);
+    #    when both name one and they differ, the survivor's stays and it is said.
+    dropped = _carry_made_by(survivor, loser)
+    # 6. The loser leaves.
     loser.active = False
     loser.merged_into = survivor.id
     loser.reconcile_state = "not_applicable"
     await db.flush()
-    # 6. Every price of the survivor, renormalized in this transaction. The price
+    # 7. Every price of the survivor, renormalized in this transaction. The price
     #    book hands the change on to recipe costing (3D), which recomputes every
     #    recipe with a line of the survivor: the loser's lines are its by now.
     db.expire_all()
@@ -514,7 +520,19 @@ async def _merge_in_session(  # noqa: C901, PLR0915
         unit_to=unit_to,
         prices_needing_bridge=max(after - before, 0),
         measures=offered,
+        made_by_dropped_recipe_id=dropped,
     )
+
+
+def _carry_made_by(survivor: Ingredient, loser: Ingredient) -> uuid.UUID | None:
+    """The loser's made-by recipe becomes the survivor's when it has none; the
+    loser's when both have one and they differ, which is then dropped."""
+    if loser.made_by_recipe_id is None or survivor.made_by_recipe_id == loser.made_by_recipe_id:
+        return None
+    if survivor.made_by_recipe_id is None:
+        survivor.made_by_recipe_id = loser.made_by_recipe_id
+        return None
+    return loser.made_by_recipe_id
 
 
 async def merge_preview(

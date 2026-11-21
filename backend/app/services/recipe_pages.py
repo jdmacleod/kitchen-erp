@@ -50,7 +50,9 @@ def serialize_body(parsed: ParsedRecipe) -> list[dict[str, Any]]:
 
     Items are ``{"t": "text", "v"}``, ``{"t": "ingredient", "name", "qty",
     "unit", "note", "seq"}`` (``seq`` is the matching ``recipe_ingredient``
-    row, numbered from 1 in document order as ``_ingredient_rows`` does),
+    row, numbered from 1 in document order as ``_ingredient_rows`` does; a
+    recipe reference adds ``"ref_path"``, and the detail read adds the
+    ``"recipe_id"`` it links to),
     ``{"t": "reference", "name", "qty", "unit", "note", "target", "section",
     "step"}`` (an `@&` reference: no row, and ``section``/``step`` index this
     list to where it came from; ``step`` is None for a whole section),
@@ -81,6 +83,7 @@ def serialize_body(parsed: ParsedRecipe) -> list[dict[str, Any]]:
                             "unit": item.unit_text,
                             "note": item.note,
                             "seq": seq,
+                            **({"ref_path": item.ref_path} if item.ref_path else {}),
                         }
                     )
                 elif isinstance(item, Reference):

@@ -662,6 +662,13 @@ async def update_ingredient_core(
         data.pop("watch", None)
     for key, value in data.items():
         setattr(ingredient, key, value)
+    if "made_by_recipe_id" in payload.model_fields_set:
+        # The recipe that makes it (#526); recomputed by the caller after the commit.
+        from app.services import recipe_source_views
+
+        ingredient.made_by_recipe_id = await recipe_source_views.checked_recipe(
+            db, payload.made_by_recipe_id
+        )
     set_fields = set(payload.model_dump(exclude_unset=True))
     bridge_changed = bool(
         {"density_g_per_ml", "density_source", "clear_density", "canonical_unit"} & set_fields

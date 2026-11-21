@@ -64,8 +64,13 @@ describe("what counts toward known (07, criterion 16)", () => {
       priced: 8,
       counted: 16,
       partial: true,
+      fromPartial: 0,
     });
     expect(known({ lines_priced: 4, lines_total: 6, lines_negligible: 2 }).partial).toBe(false);
+    // A line from an incomplete recipe makes the whole partial (issue 526).
+    expect(
+      known({ lines_priced: 4, lines_total: 6, lines_negligible: 2, lines_partial: 1 }),
+    ).toEqual({ priced: 4, counted: 4, partial: true, fromPartial: 1 });
   });
 });
 

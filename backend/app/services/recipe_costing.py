@@ -41,7 +41,9 @@ Statuses, in the order they are decided: ``negligible`` (no quantity, text
 quantity, the negligible list, or a name marked not an ingredient),
 ``unmapped`` (no ingredient), ``unconvertible`` (``convert`` failed, with its
 code), ``unpriced`` (nothing qualifies), ``posted`` (only a posted price),
-``priced``.
+``priced``. A recipe reference, and a line on an ingredient a recipe makes that
+no product price covers, cost from that recipe instead
+(``services/recipe_cost_sources``, #526).
 
 The recompute triggers (hash, alias, pin, bridge and price changes) live in
 ``services/recipe_cost_triggers``; ``recompute_recipe_core`` is the entry point
@@ -85,11 +87,18 @@ from app.services.recipe_cost_lines import (
     cost_line,
     qualifying_prices,
 )
+from app.services.recipe_cost_sources import (
+    RecipeGraph,
+    SourceRouter,
+    may_take_route_b,
+    recipe_graph,
+    takes_route_b,
+)
 
 # Stamped on each snapshot computed; a snapshot of a recipe's current content with
 # another version is rebuilt by ``kerp migrate`` (``derived_versions``). 1: posted
-# prices as the last resort (#523).
-COSTING_VERSION = 1
+# prices as the last resort (#523). 2: lines costed from recipes (#526).
+COSTING_VERSION = 2
 
 # --- the snapshot -----------------------------------------------------------------------
 
@@ -126,18 +135,19 @@ async def _find(
     basis: Basis,
     window_days: int | None,
     min_quality: int | None,
+    *,
+    current_version: bool = False,
 ) -> RecipeCostSnapshot | None:
-    return (
-        await db.execute(
-            select(RecipeCostSnapshot).where(
-                RecipeCostSnapshot.recipe_id == recipe.id,
-                RecipeCostSnapshot.content_hash == recipe.content_hash,
-                RecipeCostSnapshot.basis == basis,
-                RecipeCostSnapshot.window_days.is_not_distinct_from(window_days),
-                RecipeCostSnapshot.min_quality.is_not_distinct_from(min_quality),
-            )
-        )
-    ).scalar_one_or_none()
+    stmt = select(RecipeCostSnapshot).where(
+        RecipeCostSnapshot.recipe_id == recipe.id,
+        RecipeCostSnapshot.content_hash == recipe.content_hash,
+        RecipeCostSnapshot.basis == basis,
+        RecipeCostSnapshot.window_days.is_not_distinct_from(window_days),
+        RecipeCostSnapshot.min_quality.is_not_distinct_from(min_quality),
+    )
+    if current_version:
+        stmt = stmt.where(RecipeCostSnapshot.costing_version == COSTING_VERSION)
+    return (await db.execute(stmt)).scalar_one_or_none()
 
 
 async def find_snapshot(
@@ -146,9 +156,17 @@ async def find_snapshot(
     basis: Basis = "latest",
     window_days: int | None = None,
     min_quality: int | None = None,
+    *,
+    current_version: bool = False,
 ) -> RecipeCostSnapshot | None:
-    """The snapshot for the recipe's current hash under this key, or None."""
-    return await _find(db, recipe, basis, effective_window(basis, window_days), min_quality)
+    """The snapshot for the recipe's current hash under this key, or None.
+
+    ``current_version`` treats a snapshot of an older ``COSTING_VERSION`` as
+    missing: a recipe costing from another reads only a fresh one (#526), since a
+    ``derived_versions`` rebuild in path order may reach the referrer first.
+    """
+    window = effective_window(basis, window_days)
+    return await _find(db, recipe, basis, window, min_quality, current_version=current_version)
 
 
 @dataclass(slots=True)
@@ -182,6 +200,11 @@ class Costing:
 
     def count(self, status: str) -> int:
         return sum(c.status == status for c in self.costs)
+
+    @property
+    def partial_count(self) -> int:
+        """Lines costed from a recipe that is itself incomplete (#526)."""
+        return sum(c.source_partial for c in self.costs)
 
 
 async def kitchen_offers(
@@ -239,8 +262,14 @@ async def cost_recipe(
     min_quality: int | None,
     *,
     home_base_id: uuid.UUID | None = None,
+    graph: RecipeGraph | None = None,
 ) -> Costing:
-    """Cost the recipe as it is indexed now; nothing is written."""
+    """Cost the recipe as it is indexed now; nothing is written.
+
+    ``graph`` is the recipe link graph (``recipe_cost_sources``), built here on
+    first need when not passed: a household with no recipe references and no
+    made-by links never reads it.
+    """
     now = datetime.now(UTC)
     # Read from the database, not the identity map: a trigger runs after a bulk
     # UPDATE (a decision, a merge) that the session's loaded rows do not reflect.
@@ -290,15 +319,30 @@ async def cost_recipe(
             posted.get(ingredient.id) if posted and ingredient is not None else None,
         )
 
+    sources = SourceRouter(db, recipe, basis, window, min_quality, home_base_id, graph)
     costs = [await cost(line) for line in lines]
+    # Recipe references cost from their recipe, never from an ingredient (#526).
+    for line, c in zip(lines, costs, strict=True):
+        if line.resolution == "recipe" and c.status != "negligible":
+            await sources.route(c, line, line.ref_recipe_id, None)
     # The posted pass: one query for the ingredients of the lines nothing priced,
-    # then those lines again against their posted prices (#523, P1).
-    unpriced = [i for i, c in enumerate(costs) if c.status == "unpriced"]
-    wanted = {ing.id for i in unpriced if (ing := ingredient_of(lines[i])) is not None}
+    # then those lines again against their posted prices (#523, P1). Route (b)'s
+    # lines join the query: a posted price wins over their recipe too.
+    unpriced = [
+        i for i, c in enumerate(costs) if c.status == "unpriced" and c.source_recipe_id is None
+    ]
+    made = [i for i, c in enumerate(costs) if may_take_route_b(c, ingredient_of(lines[i]))]
+    wanted = {ing.id for i in {*unpriced, *made} if (ing := ingredient_of(lines[i])) is not None}
+    posted: dict = {}
     if wanted:
         posted = await qualifying_prices(db, wanted, min_quality, home_base_id, posted=True)
         for i in unpriced:
             costs[i] = await cost(lines[i], posted)
+    for i in made:
+        ingredient = ingredient_of(lines[i])
+        pin = pins.get(lines[i].name_norm)
+        if ingredient is not None and takes_route_b(costs[i], ingredient, pin, prices, posted):
+            await sources.route(costs[i], lines[i], ingredient.made_by_recipe_id, ingredient)
 
     out = Costing(lines=list(lines), costs=costs, computed_at=now)
     _total(out, recipe)
@@ -358,6 +402,7 @@ def _fill_snapshot(snapshot: RecipeCostSnapshot, recipe: Recipe, costing: Costin
     snapshot.lines_unmapped = costing.count("unmapped")
     snapshot.lines_negligible = costing.count("negligible")
     snapshot.lines_posted = len(costing.posted)
+    snapshot.lines_partial = costing.partial_count
     snapshot.unconfirmed_share = costing.unconfirmed_share
     snapshot.posted_consumed_cost = costing.posted_consumed_cost
     snapshot.posted_consumed_cost_high = costing.posted_consumed_cost_high
@@ -390,6 +435,8 @@ def _line_row(snapshot_id: uuid.UUID, cost: LineCost) -> RecipeCostLine:
         bridge_kind=cost.bridge_kind,
         bridge_confirmed=cost.bridge_confirmed,
         failure_code=cost.failure_code,
+        source_recipe_id=cost.source_recipe_id,
+        source_partial=cost.source_partial,
     )
 
 
@@ -401,11 +448,12 @@ async def compute_snapshot(
     min_quality: int | None = None,
     *,
     commit: bool = True,
+    graph: RecipeGraph | None = None,
 ) -> RecipeCostSnapshot:
     """Cost the recipe as it is indexed now and upsert the snapshot and its lines."""
     assert basis in BASES  # noqa: S101  "offers" is a per-kitchen view, never kept
     window = effective_window(basis, window_days)
-    costing = await cost_recipe(db, recipe, basis, window, min_quality)
+    costing = await cost_recipe(db, recipe, basis, window, min_quality, graph=graph)
     snapshot = await _find(db, recipe, basis, window, min_quality)
     if snapshot is None:
         snapshot = RecipeCostSnapshot(
@@ -437,6 +485,7 @@ async def compute_view(
     min_quality: int | None = None,
     *,
     home_base_id: uuid.UUID,
+    graph: RecipeGraph | None = None,
 ) -> tuple[
     RecipeCostSnapshot,
     list[tuple[RecipeCostLine, RecipeIngredient]],
@@ -451,7 +500,9 @@ async def compute_view(
     every call.
     """
     window = effective_window(basis, window_days)
-    costing = await cost_recipe(db, recipe, basis, window, min_quality, home_base_id=home_base_id)
+    costing = await cost_recipe(
+        db, recipe, basis, window, min_quality, home_base_id=home_base_id, graph=graph
+    )
     snapshot = RecipeCostSnapshot(
         id=new_id(),
         recipe_id=recipe.id,
@@ -490,7 +541,9 @@ async def snapshot_keys(
     return keys
 
 
-async def recompute_recipe_core(db: AsyncSession, recipe_id: uuid.UUID) -> int:
+async def recompute_recipe_core(
+    db: AsyncSession, recipe_id: uuid.UUID, *, graph: RecipeGraph | None = None
+) -> int:
     """Recompute every snapshot key the recipe has (``latest`` at least). Flushes,
     never commits, so a trigger can make it part of the caller's transaction."""
     recipe = await db.get(Recipe, recipe_id)
@@ -498,23 +551,30 @@ async def recompute_recipe_core(db: AsyncSession, recipe_id: uuid.UUID) -> int:
         return 0
     keys = await snapshot_keys(db, recipe_id)
     for basis, window, quality in keys:
-        await compute_snapshot(db, recipe, basis, window, quality, commit=False)
+        await compute_snapshot(db, recipe, basis, window, quality, commit=False, graph=graph)
     return len(keys)
 
 
 async def recompute_recipe(db: AsyncSession, recipe_id: uuid.UUID) -> int:
-    """The same, committed."""
-    n = await recompute_recipe_core(db, recipe_id)
-    await db.commit()
-    return n
+    """The same, committed, with every recipe that costs from it (#526). The
+    number of snapshots recomputed."""
+    from app.services import recipe_cost_triggers  # it imports this module
+
+    result = await recipe_cost_triggers.after_recipe_changed(db, recipe_id, commit=True)
+    return result.snapshots
 
 
-async def recompute_all(db: AsyncSession) -> int:
-    """Truncate both cost tables and rebuild every recipe's ``latest`` snapshot (criterion 26)."""
+async def recompute_all(db: AsyncSession, *, graph: RecipeGraph | None = None) -> int:
+    """Truncate both cost tables and rebuild every recipe's ``latest`` snapshot (criterion 26).
+
+    In path order: a referrer that sorts before its source computes the source
+    on demand, and the source's own pass then rewrites that row in place.
+    """
     await db.execute(text("TRUNCATE recipe_cost_line, recipe_cost_snapshot"))
     await db.commit()
     recipes = (await db.execute(select(Recipe).order_by(Recipe.path))).scalars().all()
+    graph = graph or await recipe_graph(db)
     for recipe in recipes:
-        await compute_snapshot(db, recipe, "latest", commit=False)
+        await compute_snapshot(db, recipe, "latest", commit=False, graph=graph)
     await db.commit()
     return len(recipes)

@@ -16,6 +16,7 @@ from app.catalog.keep import Place as StoragePlace
 from app.catalog.perishability import Perishability
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.product_photos import PhotoSummary
+from app.schemas.recipe_sources import LinkWarning, MadeByRecipeOut, RecipeLink
 from app.units import is_volume
 
 CanonicalUnit = Literal["g", "ml", "each"]
@@ -132,6 +133,8 @@ class IngredientUpdate(ApiModel):
     drop_measures: bool = Field(default=False, exclude=True)
     # With drop_measures, the measures to keep: a unit switch rewrites them (#527).
     keep_measures: set[uuid.UUID] | None = Field(default=None, exclude=True)
+    # The house recipe that makes it (#526); null clears the link. Left out, it stays.
+    made_by_recipe_id: uuid.UUID | None = Field(default=None, exclude=True)
 
     _category = field_validator("category")(categories.stored)
 
@@ -190,6 +193,15 @@ class IngredientOut(Categorized):
     merged_into: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
+    # The recipe that makes it (#526), and on the detail read, the one recipe
+    # titled like it to offer when none is linked and no product price exists.
+    made_by_recipe: MadeByRecipeOut | None = None
+    recipe_match: RecipeLink | None = None
+    # A PATCH that set or cleared the link: recipes recomputed, those that
+    # couldn't be, and what the link means (a cycle).
+    recomputed: int | None = None
+    recompute_failed: int | None = None
+    warnings: list[LinkWarning] = []  # noqa: RUF012
 
     @computed_field
     @property

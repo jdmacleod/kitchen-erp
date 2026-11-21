@@ -15,7 +15,7 @@ import { login } from "./helpers";
 
 /** One example, by its front-matter title; its path is what the list shows beneath. */
 const RISOTTO = { title: "Risotto alla Milanese", path: "mains/risotto.cook" };
-const EXAMPLES = 15;
+const EXAMPLES = 17;
 
 async function indexExamples(page: Page): Promise<void> {
   const scanned = await page.request.post("/api/v1/recipes/rescan");

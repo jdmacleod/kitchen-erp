@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import PriceNorm, Recipe, RecipeCostSnapshot
-from app.services import pricebook, recipe_costing
+from app.services import pricebook, recipe_cost_sources, recipe_costing
 from app.units.convert import CONVERT_VERSION
 
 
@@ -70,8 +70,12 @@ async def refresh_if_stale(db: AsyncSession, say: Callable[[str], object]) -> bo
     )
     norms = await pricebook.normalize_core(db, list(observations.scalars()))
     recipes = list((await db.execute(select(Recipe.id).order_by(Recipe.path))).scalars())
+    # One link graph for the loop (#526). In path order, not children first: a
+    # referrer reads only a source snapshot of the current version, computing it
+    # when the source's own turn hasn't come yet.
+    graph = await recipe_cost_sources.recipe_graph(db)
     for recipe_id in recipes:
-        await recipe_costing.recompute_recipe_core(db, recipe_id)
+        await recipe_costing.recompute_recipe_core(db, recipe_id, graph=graph)
     await db.commit()
     say(f"  recomputed {norms} normalizations and costs for {len(recipes)} recipes")
     return True
@@ -85,8 +89,9 @@ async def _refresh_costing(db: AsyncSession, say: Callable[[str], object]) -> bo
         f"Recipe costing is now version {recipe_costing.COSTING_VERSION}. "
         f"Rebuilding costs for {len(recipes)} recipes…"
     )
+    graph = await recipe_cost_sources.recipe_graph(db)
     for recipe_id in recipes:
-        await recipe_costing.recompute_recipe_core(db, recipe_id)
+        await recipe_costing.recompute_recipe_core(db, recipe_id, graph=graph)
     await db.commit()
     say(f"  recomputed costs for {len(recipes)} recipes")
     return True

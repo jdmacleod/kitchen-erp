@@ -12,13 +12,14 @@ from pydantic import Field, model_validator
 
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.catalog import IngredientCreate, IngredientSummary
+from app.schemas.recipe_sources import MakesOut, MakesUnitCost, RecipeLink
 
 RecipeStatus = Literal["ok", "parse_error", "missing"]
 # Whether every line of the current cost is priced; a recipe with no snapshot is incomplete.
 Completeness = Literal["complete", "incomplete"]
 MountState = Literal["mounted", "missing", "empty", "no_cook_files"]
 QtyKind = Literal["number", "range", "text", "none"]
-Resolution = Literal["alias", "manual", "unmatched", "negligible", "ignored"]
+Resolution = Literal["alias", "manual", "unmatched", "negligible", "ignored", "recipe"]
 
 
 class RecipeSummary(ApiModel):
@@ -61,6 +62,9 @@ class RecipeIngredientOut(ApiModel):
     resolution: Resolution
     ingredient_id: uuid.UUID | None
     ingredient_name: str | None = None
+    # A recipe reference (#526): the path as written and the recipe it names.
+    ref_path: str | None = None
+    ref_recipe_id: uuid.UUID | None = None
 
 
 class RecipePinOut(ApiModel):
@@ -99,6 +103,10 @@ class BodyIngredient(ApiModel):
     unit: str | None = None
     note: str | None = None
     seq: int
+    # A recipe reference (#526): the path as written, and the recipe it links
+    # to when one is at that path (filled in when the recipe is read).
+    ref_path: str | None = None
+    recipe_id: uuid.UUID | None = None
 
 
 class BodyReference(ApiModel):
@@ -154,6 +162,12 @@ class RecipeOut(RecipeSummary):
     pins: list[RecipePinOut] = []  # noqa: RUF012
     # The last good parse's steps (0048); null for a recipe indexed before it.
     body: list[BodySection] | None = None
+    # Front matter `yield:` (#526), and the recipes that cost from this one, by
+    # a recipe reference or a made-by ingredient, each once, by title, with the
+    # number of their lines that do.
+    makes: MakesOut | None = None
+    used_in: list[RecipeLink] = []  # noqa: RUF012
+    used_lines: int = 0
 
 
 class IngredientRecipeUse(ApiModel):
@@ -190,6 +204,12 @@ class RecipesStatus(ApiModel):
     last_scan_at: datetime | None
 
 
+class MissingRecipeRef(ApiModel):
+    referrer_path: str
+    ref_path: str
+    target: str | None  # null when the path leaves the recipes root
+
+
 class ScanOut(ApiModel):
     """What one scan changed."""
 
@@ -203,6 +223,9 @@ class ScanOut(ApiModel):
     missing: int
     parse_errors: int  # among the files created, updated or moved by this scan
     proposals: int
+    # Recipe references whose target isn't there (#526): `kerp recipes rescan`
+    # prints each with its referring file.
+    missing_refs: list[MissingRecipeRef] = Field(default_factory=list)
 
     @property
     def changed(self) -> int:
@@ -407,13 +430,50 @@ class CostLineHint(ApiModel):
     ingredient_name: str | None = None
 
 
+class SourceCounts(ApiModel):
+    priced: int
+    total: int
+
+
+class CycleHop(ApiModel):
+    """One recipe on a cycle and how it reaches the next: through a recipe
+    reference in its file, or through ``via_ingredient``, an ingredient it uses
+    that the next recipe makes."""
+
+    recipe: RecipeLink
+    via_ingredient: IngredientSummary | None = None
+
+
+class CostLineSourceOut(ApiModel):
+    """The recipe a line costs from (#526), and what its message needs.
+
+    ``target_path`` is where a recipe reference looked (null when it leaves the
+    recipes root); ``suggestion`` a recipe of the same base name elsewhere.
+    ``counts`` are the source's own priced and total lines (``recipe_unpriced``),
+    and ``cycle`` the walk round for ``cycle``.
+    """
+
+    recipe: RecipeLink | None = None
+    makes: MakesOut | None = None
+    target_path: str | None = None
+    suggestion: RecipeLink | None = None
+    counts: SourceCounts | None = None
+    cycle: list[CycleHop] = []  # noqa: RUF012
+
+
 class CostLineOut(ApiModel):
     id: uuid.UUID
     line: RecipeIngredientOut
     yield_mode: YieldMode
     pinned: bool
     status: CostLineStatus
-    failure_code: str | None
+    failure_code: str | None = Field(
+        description="Why the line has no cost, or a cost from a recipe failed: a conversion "
+        "code (no_density, unknown_measure, no_pack, no_qty, no_bunch_weight) or a recipe "
+        "code (no_yield, bad_yield, yield_unit, no_recipe, cycle, recipe_unpriced, "
+        "recipe_unreadable). Each is described in docs/spec/07-phase-3-recipes-and-costing.md, 3D, "
+        "under its own anchor (#failure-no-yield and so on)."
+    )
     quantity: CostQuantity | None
     yield_applied: DecimalStr | None
     yield_assumed: bool  # grossed up at 100% because the ingredient has no yield yet
@@ -428,6 +488,13 @@ class CostLineOut(ApiModel):
     packs_high: DecimalStr | None
     usda_offer: UsdaLineOffer | None = None
     hint: CostLineHint | None = None
+    # Costed from a recipe (#526): which, whether it is incomplete, and the basis
+    # it was costed under when not the table's ("latest" for a kitchen or offers).
+    source_recipe: RecipeLink | None = None
+    source_partial: bool = False
+    source_basis: str | None = None
+    source_counts: SourceCounts | None = None
+    source: CostLineSourceOut | None = None
 
 
 class CostTotals(ApiModel):
@@ -453,6 +520,9 @@ class CostCompleteness(ApiModel):
     lines_unmapped: int
     lines_negligible: int
     lines_posted: int = 0  # not in lines_priced
+    # Lines costed from a recipe that is itself incomplete (#526): counted in
+    # lines_priced or lines_posted, and a recipe with any is not complete.
+    lines_partial: int = 0
 
 
 class RecipeCostOut(ApiModel):
@@ -474,6 +544,8 @@ class RecipeCostOut(ApiModel):
     unconfirmed_share: DecimalStr
     # The posted consumed cost's share of counted plus posted, 0–1.
     posted_share: DecimalStr = Decimal(0)
+    # Counted cost per display unit of what the recipe makes (#526).
+    makes_unit_cost: MakesUnitCost | None = None
     lines: list[CostLineOut]
 
 
@@ -512,6 +584,7 @@ class RecipeCostSummary(ApiModel):
     lines_total: int
     lines_negligible: int  # left out of completeness (07, criterion 16)
     lines_posted: int = 0  # not in lines_priced, so a recipe with one is incomplete
+    lines_partial: int = 0  # costed from an incomplete recipe (#526): incomplete too
     # Some line rests on a posted price older than stale_after_days ("some stale").
     posted_stale: bool = False
     provisional: bool
@@ -519,8 +592,12 @@ class RecipeCostSummary(ApiModel):
 
     @property
     def complete(self) -> bool:
-        """Every line that counts is priced; negligible lines don't count."""
-        return self.lines_priced + self.lines_negligible >= self.lines_total
+        """Every line that counts is priced, and none from an incomplete recipe;
+        negligible lines don't count."""
+        return (
+            self.lines_priced + self.lines_negligible >= self.lines_total
+            and self.lines_partial == 0
+        )
 
 
 class RecipeListItem(RecipeSummary):

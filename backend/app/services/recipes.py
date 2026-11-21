@@ -39,8 +39,8 @@ from app.recipes import index
 from app.recipes.cooklang import ParseError
 from app.recipes.cooklang import Recipe as ParsedRecipe
 from app.recipes.repo import RepoChanging, RepoView, open_repo
-from app.schemas.recipes import RecipesStatus, ScanOut, StatusCounts
-from app.services import recipe_cost_triggers, recipe_pages, recipe_resolution
+from app.schemas.recipes import MissingRecipeRef, RecipesStatus, ScanOut, StatusCounts
+from app.services import recipe_cost_triggers, recipe_pages, recipe_refs, recipe_resolution
 from app.services.recipe_files import (
     Parsed,
     _error_message,
@@ -89,6 +89,9 @@ def _apply_good_parse(row: Recipe, parsed: ParsedRecipe) -> None:
     row.servings_text = parsed.servings_text
     row.front_matter = dict(parsed.front_matter)
     row.body = recipe_pages.serialize_body(parsed)  # the steps, for the rendered recipe (0048)
+    row.makes_qty = parsed.makes_qty  # front matter `yield:` (0071, #526)
+    row.makes_unit = parsed.makes_unit
+    row.makes_text = parsed.makes_text
     row.status = "ok"
     row.parse_error_message = None
 
@@ -135,7 +138,8 @@ async def _reindex(
     for line in _ingredient_rows(parsed):
         line.recipe_id = row.id
         choice = kept.get((line.seq, line.name_norm))
-        if choice is not None:
+        # A line that became, or stopped being, a recipe reference takes no old choice.
+        if choice is not None and (choice[1] == "recipe") == (line.resolution == "recipe"):
             line.ingredient_id, line.resolution, line.yield_mode = choice
         db.add(line)
     return True
@@ -311,6 +315,9 @@ async def scan(  # noqa: C901, PLR0912, PLR0915
         await db.rollback()
         log.info("recipe repository is changing; scan deferred")
         return _deferred(now, len(files))
+    # Recipe references, every one, so a new or moved target is seen (#526).
+    links = await recipe_refs.link_recipe_refs(db)
+    changed |= links.changed
     # Rows just rebuilt and rows that waited, in one pass (3C, criterion 14).
     waiting = await recipe_cost_triggers.unmatched_lines(db)
     await recipe_resolution.resolve_unmatched(db, settings)
@@ -337,6 +344,10 @@ async def scan(  # noqa: C901, PLR0912, PLR0915
         missing=len(plan.of(index.Missing)),
         parse_errors=parse_errors,
         proposals=len(relinks),
+        missing_refs=[
+            MissingRecipeRef(referrer_path=m.referrer_path, ref_path=m.ref_path, target=m.target)
+            for m in links.missing
+        ],
     )
 
 
